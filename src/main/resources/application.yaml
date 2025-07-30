@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: CredFlow
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/credflow
+    username: postgres
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+          time_zone: UTC
+
+server:
+  servlet:
+    context-path: /credflow/api
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION_MS:3600000}  # fallback: 1h in milliseconds
