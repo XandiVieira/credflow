@@ -7,7 +7,7 @@ import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
-import com.relyon.credflow.utils.DescriptionNormalizer;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import com.relyon.credflow.utils.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -87,28 +89,42 @@ public class TransactionService {
             var description = parts[1].replace("\"", "").trim();
             var value = new BigDecimal(parts[2].replace("R$", "").replace(".", "").replace(",", ".").trim());
 
-            var normalizedKey = DescriptionNormalizer.normalize(description);
+            var normalized = NormalizationUtils.normalizeDescription(description);
 
-            var mapping = existingMappings.get(normalizedKey);
+            var mapping = existingMappings.get(normalized);
             if (mapping == null) {
-                mapping = newMappings.get(normalizedKey);
+                mapping = newMappings.get(normalized);
             }
+
+            log.info("Descrição original='{}' | Normalizada='{}' | Mapping encontrado={} | Simplified='{}' | Category='{}'",
+                    description,
+                    normalized,
+                    mapping != null,
+                    mapping != null ? mapping.getSimplifiedDescription() : "null",
+                    mapping != null ? mapping.getCategory() : "null"
+            );
+
 
             if (mapping == null) {
                 log.debug("Adicionando novo mapeamento para descrição ausente: {}", description);
                 mapping = DescriptionMapping.builder()
                         .originalDescription(description)
+                        .normalizedDescription(normalized)
                         .simplifiedDescription(null)
                         .category(null)
                         .account(account)
                         .build();
-                newMappings.put(normalizedKey, mapping);
+                newMappings.put(normalized, mapping);
             }
 
-            var simplified = mapping.getSimplifiedDescription();
-            var category = mapping.getCategory() != null ? mapping.getCategory() : "Não Identificado";
-
-            var transaction = new Transaction(date, description, simplified, category, value, "Ambos");
+            var transaction = new Transaction(
+                    date,
+                    description,
+                    mapping.getSimplifiedDescription(),
+                    mapping.getCategory() != null ? mapping.getCategory() : "Não Identificado",
+                    value,
+                    "Ambos"
+            );
             transaction.setChecksum(DigestUtils.sha256Hex(line.trim()));
             transaction.setAccount(account);
             return Optional.of(transaction);
@@ -121,7 +137,7 @@ public class TransactionService {
 
     private Map<String, DescriptionMapping> preloadMappings(Account account) {
         return mappingRepository.findAllByAccount(account).stream()
-                .collect(Collectors.toMap(m -> m.getOriginalDescription().toLowerCase(), Function.identity()));
+                .collect(Collectors.toMap(DescriptionMapping::getNormalizedDescription, Function.identity()));
     }
 
     public Transaction create(Transaction transaction) {
@@ -145,7 +161,7 @@ public class TransactionService {
 
     private void updateTransactionFields(Transaction existing, Transaction updated) {
         existing.setDate(updated.getDate());
-        existing.setDescription(DescriptionNormalizer.normalize(updated.getDescription()));
+        existing.setDescription(updated.getDescription());
         existing.setSimplifiedDescription(updated.getSimplifiedDescription());
         existing.setCategory(updated.getCategory());
         existing.setValue(updated.getValue());
@@ -205,11 +221,13 @@ public class TransactionService {
     }
 
     public void applyMappingToExistingTransactions(Account account, String originalDescription, String simplified, String category) {
-        var affected = repository.findByAccountAndDescriptionIgnoreCase(account, originalDescription);
+        var normalized = NormalizationUtils.normalizeDescription(originalDescription);
+        var affected = mappingRepository.findByAccountAndNormalizedDescription(account, normalized);
         affected.forEach(transaction -> {
             transaction.setSimplifiedDescription(simplified);
             transaction.setCategory(category);
         });
-        repository.saveAll(affected);
+        mappingRepository.saveAll(affected);
     }
+
 }

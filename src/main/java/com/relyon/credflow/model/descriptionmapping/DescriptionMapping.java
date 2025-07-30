@@ -20,6 +20,8 @@ public class DescriptionMapping extends BaseEntity {
     private String originalDescription;
     private String simplifiedDescription;
     private String category;
+    @Column(nullable = false)
+    private String normalizedDescription;
 
     @ManyToOne(optional = false)
     private Account account;

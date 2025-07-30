@@ -5,9 +5,11 @@ import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
-import com.relyon.credflow.utils.DescriptionNormalizer;
+
 import java.util.List;
 import java.util.Optional;
+
+import com.relyon.credflow.utils.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,8 +29,9 @@ public class DescriptionMappingService {
         var savedMappings = mappings.stream()
                 .filter(mapping -> isNewMapping(mapping.getOriginalDescription()))
                 .map(mapping -> {
-                    mapping.setOriginalDescription(DescriptionNormalizer.normalize(mapping.getOriginalDescription()));
-                    mapping.setSimplifiedDescription(DescriptionNormalizer.normalize(mapping.getSimplifiedDescription()));
+                    mapping.setOriginalDescription(mapping.getOriginalDescription());
+                    mapping.setSimplifiedDescription(mapping.getSimplifiedDescription());
+                    mapping.setNormalizedDescription(NormalizationUtils.normalizeDescription(mapping.getOriginalDescription()));
                     return saveMappingWithAccount(mapping, account);
                 })
                 .toList();
@@ -80,13 +83,14 @@ public class DescriptionMappingService {
     }
 
     private boolean isNewMapping(String originalDescription) {
-        var normalized = DescriptionNormalizer.normalize(originalDescription);
-        var exists = repository.existsByOriginalDescriptionIgnoreCase(normalized);
+        var normalized = NormalizationUtils.normalizeDescription(originalDescription);
+        var exists = repository.existsByNormalizedDescriptionIgnoreCase(normalized);
         if (exists) {
-            log.warn("Mapping already exists for '{}', skipping", normalized);
+            log.warn("Mapping already exists for '{}'", normalized);
         }
         return !exists;
     }
+
 
     private DescriptionMapping saveMappingWithAccount(DescriptionMapping mapping, Account account) {
         mapping.setAccount(account);
@@ -103,8 +107,8 @@ public class DescriptionMappingService {
     }
 
     private DescriptionMapping applyChangesAndSave(DescriptionMapping existing, DescriptionMapping updated, Account account) {
-        existing.setOriginalDescription(DescriptionNormalizer.normalize(updated.getOriginalDescription()));
-        existing.setSimplifiedDescription(DescriptionNormalizer.normalize(updated.getSimplifiedDescription()));
+        existing.setOriginalDescription(updated.getOriginalDescription());
+        existing.setSimplifiedDescription(updated.getSimplifiedDescription());
         existing.setCategory(updated.getCategory());
 
         var saved = repository.save(existing);
@@ -114,12 +118,12 @@ public class DescriptionMappingService {
 
     private void normalizeMapping(DescriptionMapping mapping) {
         if (mapping.getOriginalDescription() != null) {
-            mapping.setOriginalDescription(DescriptionNormalizer.normalize((mapping.getOriginalDescription())));
-        }
-        if (mapping.getSimplifiedDescription() != null) {
-            mapping.setSimplifiedDescription(DescriptionNormalizer.normalize((mapping.getSimplifiedDescription())));
+            mapping.setNormalizedDescription(
+                    NormalizationUtils.normalizeDescription(mapping.getOriginalDescription())
+            );
         }
     }
+
 
     private ResourceNotFoundException notFound(Long id) {
         log.error("Mapping not found for ID {}", id);
