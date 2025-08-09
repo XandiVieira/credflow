@@ -6,13 +6,14 @@ import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.AccountRepository;
 import com.relyon.credflow.repository.CategoryRepository;
 import com.relyon.credflow.repository.UserRepository;
-import java.util.List;
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.List;
+import java.util.stream.Stream;
 
 @Configuration
 @RequiredArgsConstructor

@@ -39,7 +39,8 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .userDetailsService(userDetailsService)
-                .httpBasic(_ -> {})
+                .httpBasic(_ -> {
+                })
                 .build();
     }
 

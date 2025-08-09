@@ -1,38 +1,34 @@
 package com.relyon.credflow.model.user;
 
-import java.util.Collection;
-import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Collection;
+
 @Getter
+@AllArgsConstructor
 public class AuthenticatedUser implements UserDetails {
 
-    private final User user;
+    private final Long userId;
+    private final Long accountId;
+    private final String email;
+    private final String password;
 
-    public AuthenticatedUser(User user) {
-        this.user = user;
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return null;
     }
 
     @Override
     public String getUsername() {
-        return user.getEmail();
-    }
-
-    @Override
-    public String getPassword() {
-        return user.getPassword();
-    }
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(); // ajuste se usar roles
+        return email;
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // ou lógica real
+        return true;
     }
 
     @Override

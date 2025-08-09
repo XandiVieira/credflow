@@ -3,11 +3,12 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.repository.AccountRepository;
-import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,35 +18,56 @@ public class AccountService {
     private final AccountRepository accountRepository;
 
     public List<Account> findAll() {
-        return accountRepository.findAll();
+        log.info("Fetching all accounts");
+        var accounts = accountRepository.findAll();
+        log.info("Found {} accounts", accounts.size());
+        return accounts;
     }
 
     public Account findById(Long id) {
+        log.info("Fetching account by ID {}", id);
         return accountRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID " + id));
+                .orElseThrow(() -> {
+                    log.warn("Account with ID {} not found", id);
+                    return new ResourceNotFoundException("Account not found with ID " + id);
+                });
+    }
+
+    public Optional<Account> findByIdOptional(Long id) {
+        log.info("Fetching optional account by ID {}", id);
+        return accountRepository.findById(id);
     }
 
     public Account create(Account account) {
         log.info("Creating account: {}", account);
-        return accountRepository.save(account);
+        var created = accountRepository.save(account);
+        log.info("Account created with ID {}", created.getId());
+        return created;
     }
 
     public Account update(Long id, Account updated) {
-        return accountRepository.findById(id).map(existing -> {
-            existing.setName(updated.getName());
-            existing.setDescription(updated.getDescription());
-            return accountRepository.save(existing);
-        }).orElseThrow(() -> new ResourceNotFoundException("Account not found with ID " + id));
+        log.info("Updating account with ID {}", id);
+        return accountRepository.findById(id)
+                .map(existing -> {
+                    existing.setName(updated.getName());
+                    existing.setDescription(updated.getDescription());
+                    var saved = accountRepository.save(existing);
+                    log.info("Account with ID {} successfully updated", id);
+                    return saved;
+                })
+                .orElseThrow(() -> {
+                    log.warn("Account with ID {} not found for update", id);
+                    return new ResourceNotFoundException("Account not found with ID " + id);
+                });
     }
 
     public void delete(Long id) {
+        log.info("Deleting account with ID {}", id);
         if (!accountRepository.existsById(id)) {
+            log.warn("Cannot delete. Account with ID {} not found", id);
             throw new ResourceNotFoundException("Account not found with ID " + id);
         }
         accountRepository.deleteById(id);
-    }
-
-    public Optional<Account> findByIdOptional(Long id) {
-        return accountRepository.findById(id);
+        log.info("Account with ID {} successfully deleted", id);
     }
 }

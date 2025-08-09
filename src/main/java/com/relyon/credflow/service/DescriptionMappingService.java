@@ -1,18 +1,15 @@
 package com.relyon.credflow.service;
 
 import com.relyon.credflow.exception.ResourceNotFoundException;
-import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
-import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
-
-import java.util.List;
-import java.util.Optional;
-
 import com.relyon.credflow.utils.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -21,98 +18,107 @@ public class DescriptionMappingService {
 
     private final DescriptionMappingRepository repository;
     private final TransactionService transactionService;
+    private final AccountService accountService;
 
-    public List<DescriptionMapping> createAll(List<DescriptionMapping> mappings, AuthenticatedUser authenticatedUser) {
-        var account = authenticatedUser.getUser().getAccount();
-        log.info("Creating {} description mappings in batch", mappings.size());
+    public List<DescriptionMapping> createAll(List<DescriptionMapping> mappings, Long accountId) {
+        log.info("Creating {} description mappings for account {}", mappings.size(), accountId);
 
         var savedMappings = mappings.stream()
-                .filter(mapping -> isNewMapping(mapping.getOriginalDescription()))
+                .filter(mapping -> isNewMappingForAccount(mapping.getOriginalDescription(), accountId))
                 .map(mapping -> {
-                    mapping.setOriginalDescription(mapping.getOriginalDescription());
-                    mapping.setSimplifiedDescription(mapping.getSimplifiedDescription());
-                    mapping.setNormalizedDescription(NormalizationUtils.normalizeDescription(mapping.getOriginalDescription()));
-                    return saveMappingWithAccount(mapping, account);
+                    normalizeMapping(mapping);
+                    mapping.setAccount(accountService.findById(accountId));
+                    return saveMappingWithAccount(mapping, accountId);
                 })
                 .toList();
 
-        savedMappings.forEach(saved ->
-                transactionService.applyMappingToExistingTransactions(
-                        account,
-                        saved.getOriginalDescription(),
-                        saved.getSimplifiedDescription(),
-                        saved.getCategory()
-                )
-        );
+        savedMappings.forEach(saved -> applyMappingToTransactions(accountId, saved));
 
         return savedMappings;
     }
 
-    public DescriptionMapping update(Long id, DescriptionMapping updated, AuthenticatedUser authenticatedUser) {
-        var account = authenticatedUser.getUser().getAccount();
-        log.info("Updating DescriptionMapping ID {}", id);
+    public DescriptionMapping update(Long id, DescriptionMapping updated, Long accountId) {
+        log.info("Updating description mapping ID {} for account {}", id, accountId);
 
         normalizeMapping(updated);
 
-        return repository.findById(id)
-                .map(existing -> applyChangesAndSave(existing, updated, account))
+        return repository.findByIdAndAccountId(id, accountId)
+                .map(existing -> applyChangesAndSave(existing, updated, accountId))
                 .orElseThrow(() -> notFound(id));
     }
 
-    public List<DescriptionMapping> findAll() {
-        log.debug("Fetching all DescriptionMappings");
-        return repository.findAll();
-    }
+    public List<DescriptionMapping> findAll(Long accountId, Boolean onlyIncomplete) {
+        log.info("Fetching {} description mappings for account {}",
+                Boolean.TRUE.equals(onlyIncomplete) ? "incomplete" : "all",
+                accountId);
 
-    public Optional<DescriptionMapping> findById(Long id) {
-        log.debug("Searching for DescriptionMapping by ID: {}", id);
-        return repository.findById(id);
-    }
+        var allMappings = repository.findAllByAccountId(accountId);
 
-    public Optional<DescriptionMapping> findByOriginalDescription(String description) {
-        log.debug("Searching for DescriptionMapping by original description: {}", description);
-        return repository.findByOriginalDescriptionIgnoreCase(description);
-    }
-
-    public void delete(Long id) {
-        log.info("Deleting DescriptionMapping ID {}", id);
-        if (!repository.existsById(id)) {
-            throw notFound(id);
+        if (Boolean.TRUE.equals(onlyIncomplete)) {
+            return allMappings.stream()
+                    .filter(DescriptionMapping::isIncomplete)
+                    .toList();
         }
-        repository.deleteById(id);
+
+        return allMappings;
     }
 
-    private boolean isNewMapping(String originalDescription) {
+
+    public Optional<DescriptionMapping> findById(Long id, Long accountId) {
+        log.info("Fetching description mapping ID {} for account {}", id, accountId);
+        return repository.findByIdAndAccountId(id, accountId);
+    }
+
+    public Optional<DescriptionMapping> findByNormalizedDescription(String description, Long accountId) {
+        var normalized = NormalizationUtils.normalizeDescription(description);
+        log.info("Searching for mapping by description '{}' (normalized '{}') for account {}",
+                description, normalized, accountId);
+        return repository.findByNormalizedDescriptionAndAccountId(normalized, accountId);
+    }
+
+    public void delete(Long id, Long accountId) {
+        log.info("Deleting description mapping ID {} for account {}", id, accountId);
+
+        var mapping = repository.findByIdAndAccountId(id, accountId)
+                .orElseThrow(() -> notFound(id));
+
+        repository.delete(mapping);
+        log.info("Successfully deleted mapping ID {}", id);
+    }
+
+    private boolean isNewMappingForAccount(String originalDescription, Long accountId) {
         var normalized = NormalizationUtils.normalizeDescription(originalDescription);
-        var exists = repository.existsByNormalizedDescriptionIgnoreCase(normalized);
+        var exists = repository.findByNormalizedDescriptionAndAccountId(normalized, accountId).isPresent();
+
         if (exists) {
-            log.warn("Mapping already exists for '{}'", normalized);
+            log.warn("Mapping already exists for '{}' in account {}", normalized, accountId);
         }
+
         return !exists;
     }
 
-
-    private DescriptionMapping saveMappingWithAccount(DescriptionMapping mapping, Account account) {
-        mapping.setAccount(account);
+    private DescriptionMapping saveMappingWithAccount(DescriptionMapping mapping, Long accountId) {
+        mapping.setAccount(accountService.findById(accountId));
         return repository.save(mapping);
     }
 
-    private void updateExistingTransactions(Account account, DescriptionMapping mapping) {
+    private void applyMappingToTransactions(Long accountId, DescriptionMapping mapping) {
         transactionService.applyMappingToExistingTransactions(
-                account,
+                accountId,
                 mapping.getOriginalDescription(),
                 mapping.getSimplifiedDescription(),
                 mapping.getCategory()
         );
     }
 
-    private DescriptionMapping applyChangesAndSave(DescriptionMapping existing, DescriptionMapping updated, Account account) {
+    private DescriptionMapping applyChangesAndSave(DescriptionMapping existing, DescriptionMapping updated, Long accountId) {
         existing.setOriginalDescription(updated.getOriginalDescription());
         existing.setSimplifiedDescription(updated.getSimplifiedDescription());
         existing.setCategory(updated.getCategory());
+        existing.setAccount(accountService.findById(accountId));
 
         var saved = repository.save(existing);
-        updateExistingTransactions(account, saved);
+        applyMappingToTransactions(accountId, saved);
         return saved;
     }
 
@@ -124,9 +130,8 @@ public class DescriptionMappingService {
         }
     }
 
-
     private ResourceNotFoundException notFound(Long id) {
-        log.error("Mapping not found for ID {}", id);
+        log.error("Mapping not found with ID {}", id);
         return new ResourceNotFoundException("Mapping not found with ID " + id);
     }
 }

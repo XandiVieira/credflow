@@ -5,39 +5,45 @@ import com.relyon.credflow.model.account.AccountRequestDTO;
 import com.relyon.credflow.model.account.AccountResponseDTO;
 import com.relyon.credflow.service.AccountService;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/v1/accounts")
 @RequiredArgsConstructor
+@Slf4j
 public class AccountController {
 
     private final AccountService accountService;
     private final ModelMapper modelMapper;
 
     @GetMapping
-    public List<AccountResponseDTO> findAll() {
-        return accountService.findAll().stream()
-                .map(account -> modelMapper.map(account, AccountResponseDTO.class)).toList();
+    public ResponseEntity<List<AccountResponseDTO>> findAll() {
+        log.info("GET to fetch all accounts");
+        var result = accountService.findAll().stream()
+                .map(account -> modelMapper.map(account, AccountResponseDTO.class))
+                .toList();
+        log.info("Found {} accounts", result.size());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<AccountResponseDTO> findById(@PathVariable Long id) {
+        log.info("GET to fetch account by ID {}", id);
         return accountService.findByIdOptional(id)
-                .map(account -> modelMapper.map(account, AccountResponseDTO.class))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping
-    public ResponseEntity<AccountResponseDTO> create(@Valid @RequestBody AccountRequestDTO requestDTO) {
-        var account = modelMapper.map(requestDTO, Account.class);
-        var created = accountService.create(account);
-        return ResponseEntity.ok(modelMapper.map(created, AccountResponseDTO.class));
+                .map(account -> {
+                    log.info("Account with ID {} found", id);
+                    return ResponseEntity.ok(modelMapper.map(account, AccountResponseDTO.class));
+                })
+                .orElseGet(() -> {
+                    log.warn("Account with ID {} not found", id);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @PutMapping("/{id}")
@@ -45,14 +51,18 @@ public class AccountController {
             @PathVariable Long id,
             @Valid @RequestBody AccountRequestDTO requestDTO
     ) {
+        log.info("PUT to update account with ID {}", id);
         var updatedEntity = modelMapper.map(requestDTO, Account.class);
         var updated = accountService.update(id, updatedEntity);
+        log.info("Account with ID {} successfully updated", id);
         return ResponseEntity.ok(modelMapper.map(updated, AccountResponseDTO.class));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        log.info("DELETE account with ID {}", id);
         accountService.delete(id);
+        log.info("Account with ID {} successfully deleted", id);
         return ResponseEntity.noContent().build();
     }
 }

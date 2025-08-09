@@ -7,6 +7,13 @@ import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
+import com.relyon.credflow.utils.NormalizationUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -21,14 +28,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.relyon.credflow.utils.NormalizationUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,16 +36,14 @@ public class TransactionService {
     private final TransactionRepository repository;
     private final DescriptionMappingRepository mappingRepository;
     private final AccountService accountService;
-
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public List<Transaction> importFromBanrisulCSV(MultipartFile file, Long accountId) {
-        log.info("Iniciando importação do arquivo CSV: {}", file.getOriginalFilename());
+        var account = accountService.findById(accountId);
+        log.info("Starting CSV import: {}", file.getOriginalFilename());
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-
-            var account = accountService.findById(accountId);
-            var mappings = preloadMappings(account);
+            var mappings = preloadMappings(accountId);
             var newMappings = new HashMap<String, DescriptionMapping>();
 
             var transactions = reader.lines()
@@ -58,31 +55,26 @@ public class TransactionService {
                     .toList();
 
             if (!newMappings.isEmpty()) {
-                log.info("Salvando {} novos mapeamentos detectados durante a importação", newMappings.size());
+                log.info("Saving {} new mappings detected during import", newMappings.size());
                 mappingRepository.saveAll(newMappings.values());
             }
 
-            log.info("Importação concluída. Transações salvas: {}", transactions.size());
+            log.info("Import completed. Transactions saved: {}", transactions.size());
             return transactions;
 
         } catch (Exception e) {
-            log.error("Erro ao processar CSV: {}", e.getMessage(), e);
-            throw new CsvProcessingException("Erro ao processar CSV: " + e.getMessage(), e);
+            log.error("Error processing CSV: {}", e.getMessage(), e);
+            throw new CsvProcessingException("CSV processing error: " + e.getMessage(), e);
         }
     }
 
     private boolean isNotDuplicate(Transaction t) {
-        var exists = repository.existsByChecksum(t.getChecksum());
-        if (exists) log.debug("Transação duplicada ignorada (checksum={}): {}", t.getChecksum(), t);
+        boolean exists = repository.existsByChecksum(t.getChecksum());
+        if (exists) log.info("Duplicate transaction skipped (checksum={}): {}", t.getChecksum(), t);
         return !exists;
     }
 
-    private Optional<Transaction> parseLineToTransaction(
-            String line,
-            Account account,
-            Map<String, DescriptionMapping> existingMappings,
-            Map<String, DescriptionMapping> newMappings) {
-
+    private Optional<Transaction> parseLineToTransaction(String line, Account account, Map<String, DescriptionMapping> existingMappings, Map<String, DescriptionMapping> newMappings) {
         try {
             var parts = line.split(";", 4);
             var date = LocalDate.parse(parts[0].trim(), formatter);
@@ -90,28 +82,12 @@ public class TransactionService {
             var value = new BigDecimal(parts[2].replace("R$", "").replace(".", "").replace(",", ".").trim());
 
             var normalized = NormalizationUtils.normalizeDescription(description);
-
-            var mapping = existingMappings.get(normalized);
-            if (mapping == null) {
-                mapping = newMappings.get(normalized);
-            }
-
-            log.info("Descrição original='{}' | Normalizada='{}' | Mapping encontrado={} | Simplified='{}' | Category='{}'",
-                    description,
-                    normalized,
-                    mapping != null,
-                    mapping != null ? mapping.getSimplifiedDescription() : "null",
-                    mapping != null ? mapping.getCategory() : "null"
-            );
-
+            var mapping = Optional.ofNullable(existingMappings.get(normalized)).orElse(newMappings.get(normalized));
 
             if (mapping == null) {
-                log.debug("Adicionando novo mapeamento para descrição ausente: {}", description);
                 mapping = DescriptionMapping.builder()
                         .originalDescription(description)
                         .normalizedDescription(normalized)
-                        .simplifiedDescription(null)
-                        .category(null)
                         .account(account)
                         .build();
                 newMappings.put(normalized, mapping);
@@ -130,32 +106,32 @@ public class TransactionService {
             return Optional.of(transaction);
 
         } catch (Exception ex) {
-            log.warn("Linha ignorada devido a erro de parsing: [{}] - {}", line, ex.getMessage());
+            log.warn("Line ignored due to parsing error: [{}] - {}", line, ex.getMessage());
             return Optional.empty();
         }
     }
 
-    private Map<String, DescriptionMapping> preloadMappings(Account account) {
-        return mappingRepository.findAllByAccount(account).stream()
+    private Map<String, DescriptionMapping> preloadMappings(Long accountId) {
+        return mappingRepository.findAllByAccountId(accountId).stream()
                 .collect(Collectors.toMap(DescriptionMapping::getNormalizedDescription, Function.identity()));
     }
 
     public Transaction create(Transaction transaction) {
-        log.info("Criando nova transação: {}", transaction);
-        saveMappingIfNotExists(transaction.getDescription(), transaction.getSimplifiedDescription(), transaction.getCategory());
+        log.info("Creating new transaction: {}", transaction);
+        saveMappingIfNotExists(transaction.getDescription(), transaction.getSimplifiedDescription(), transaction.getCategory(), transaction.getAccount());
         return repository.save(transaction);
     }
 
-    public Transaction update(Long id, Transaction updated) {
-        log.info("Atualizando transação ID {}: {}", id, updated);
+    public Transaction update(Long id, Transaction updated, Long accountId) {
+        log.info("Updating transaction ID {}: {}", id, updated);
 
-        return repository.findById(id).map(existing -> {
+        return repository.findByIdAndAccountId(id, accountId).map(existing -> {
             updateTransactionFields(existing, updated);
-            saveMappingIfNotExists(updated.getDescription(), updated.getSimplifiedDescription(), updated.getCategory());
+            saveMappingIfNotExists(updated.getDescription(), updated.getSimplifiedDescription(), updated.getCategory(), accountService.findById(accountId));
             return repository.save(existing);
         }).orElseThrow(() -> {
-            log.warn("Transação com ID {} não encontrada para atualização", id);
-            return new ResourceNotFoundException("Transação não encontrada com ID " + id);
+            log.warn("Transaction with ID {} not found for update", id);
+            return new ResourceNotFoundException("Transaction not found with ID " + id);
         });
     }
 
@@ -168,17 +144,17 @@ public class TransactionService {
         existing.setResponsible(updated.getResponsible());
     }
 
-    public List<Transaction> findFiltered(String responsible, String category, String startDate, String endDate, String sortKey) {
+    public List<Transaction> findFiltered(Long accountId, String responsible, String category, String startDate, String endDate, String sortKey) {
         var effResponsible = responsible != null ? responsible : "Ambos";
         var start = startDate != null ? LocalDate.parse(startDate) : null;
         var end = endDate != null ? LocalDate.parse(endDate) : null;
 
         var sort = resolveSort(sortKey);
-        log.info("Consultando transações: responsible={}, category={}, start={}, end={}, sort={}", effResponsible, category, start, end, sortKey);
+        log.info("Querying transactions: responsible={}, category={}, start={}, end={}, sort={}", effResponsible, category, start, end, sortKey);
 
         return category == null ?
-                repository.findByResponsibleAndDateRange(effResponsible, start, end, sort) :
-                repository.findByResponsibleAndCategoryAndDateRange(effResponsible, category, start, end, sort);
+                repository.findByAccountIdAndResponsibleAndDateBetween(accountId, effResponsible, start, end, sort) :
+                repository.findByAccountIdAndResponsibleAndCategoryAndDateBetween(accountId, effResponsible, category, start, end, sort);
     }
 
     private Sort resolveSort(String sortKey) {
@@ -192,42 +168,41 @@ public class TransactionService {
         };
     }
 
-    public Optional<Transaction> findById(Long id) {
-        log.debug("Buscando transação por ID: {}", id);
-        return repository.findById(id);
+    public Optional<Transaction> findById(Long id, Long accountId) {
+        log.info("Finding transaction by ID: {}", id);
+        return repository.findByIdAndAccountId(id, accountId);
     }
 
-    public void delete(Long id) {
-        log.info("Removendo transação ID: {}", id);
-        if (!repository.existsById(id)) {
-            log.warn("Transação com ID {} não encontrada para exclusão", id);
-            throw new ResourceNotFoundException("Transação não encontrada com ID " + id);
-        }
-        repository.deleteById(id);
+    public void delete(Long id, Long accountId) {
+        log.info("Deleting transaction ID: {}", id);
+        var transaction = repository.findByIdAndAccountId(id, accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
+        repository.delete(transaction);
     }
 
-    private void saveMappingIfNotExists(String description, String simplified, String category) {
-        mappingRepository.findByOriginalDescriptionIgnoreCase(description).ifPresentOrElse(
-                _ -> log.debug("Mapeamento já existente para descrição: {}", description),
+    private void saveMappingIfNotExists(String description, String simplified, String category, Account account) {
+        var normalized = NormalizationUtils.normalizeDescription(description);
+        mappingRepository.findByNormalizedDescriptionAndAccountId(normalized, account.getId()).ifPresentOrElse(
+                m -> log.debug("Mapping already exists for normalized: {}", normalized),
                 () -> {
-                    log.debug("Salvando novo mapeamento para descrição: {}", description);
+                    log.info("Saving new mapping for normalized: {}", normalized);
                     var mapping = DescriptionMapping.builder()
                             .originalDescription(description)
+                            .normalizedDescription(normalized)
                             .simplifiedDescription(simplified)
                             .category(category)
+                            .account(account)
                             .build();
                     mappingRepository.save(mapping);
                 });
     }
 
-    public void applyMappingToExistingTransactions(Account account, String originalDescription, String simplified, String category) {
-        var normalized = NormalizationUtils.normalizeDescription(originalDescription);
-        var affected = mappingRepository.findByAccountAndNormalizedDescription(account, normalized);
-        affected.forEach(transaction -> {
-            transaction.setSimplifiedDescription(simplified);
-            transaction.setCategory(category);
+    public void applyMappingToExistingTransactions(Long accountId, String originalDescription, String simplified, String category) {
+        var affected = repository.findByAccountIdAndDescriptionIgnoreCase(accountId, originalDescription);
+        affected.forEach(t -> {
+            t.setSimplifiedDescription(simplified);
+            t.setCategory(category);
         });
-        mappingRepository.saveAll(affected);
+        repository.saveAll(affected);
     }
-
 }

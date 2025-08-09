@@ -1,6 +1,7 @@
 package com.relyon.credflow.model.transaction;
 
 import lombok.Data;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 

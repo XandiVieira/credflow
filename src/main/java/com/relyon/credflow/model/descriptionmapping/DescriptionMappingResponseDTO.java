@@ -10,4 +10,5 @@ public class DescriptionMappingResponseDTO {
     private String normalizedDescription;
     private String category;
     private Long accountId;
+    private boolean incomplete;
 }

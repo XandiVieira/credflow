@@ -2,6 +2,7 @@ package com.relyon.credflow.model.account;
 
 import com.relyon.credflow.model.user.UserResponseDTO;
 import lombok.Data;
+
 import java.util.List;
 
 @Data
