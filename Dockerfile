@@ -1,5 +1,5 @@
 # ---------- Build ----------
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:22-jdk AS build
 WORKDIR /app
 COPY mvnw ./
 COPY .mvn .mvn
@@ -10,9 +10,16 @@ COPY src ./src
 RUN ./mvnw -DskipTests clean package
 
 # ---------- Run ----------
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:22-jre
 WORKDIR /app
 COPY --from=build /app/target/credflow-*.jar /app/app.jar
+
+RUN addgroup --system app && adduser --system --ingroup app app
+USER app:app
+
+ENV JAVA_OPTS="-Xms256m -Xmx512m -Djava.security.egd=file:/dev/./urandom"
+EXPOSE 10000
+CMD ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
 
 # Run as non-root
 RUN addgroup --system app && adduser --system --ingroup app app
