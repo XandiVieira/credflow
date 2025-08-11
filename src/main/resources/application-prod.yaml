@@ -1,0 +1,14 @@
+spring:
+  config.activate.on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}        # jdbc:postgresql://<prod-internal-host>:5432/<db>?sslmode=require
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate.ddl-auto: validate         # don’t let prod mutate schema
+  datasource.hikari:
+    maximum-pool-size: 5                 # match your plan’s conn limits
+    minimum-idle: 1
+    connection-timeout: 20000
+    idle-timeout: 600000
+    max-lifetime: 1800000
