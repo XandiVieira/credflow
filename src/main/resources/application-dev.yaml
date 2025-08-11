@@ -1,7 +1,7 @@
 spring:
   config.activate.on-profile: dev
   datasource:
-    url: jdbc:postgresql://dpg-d2d2ucbe5dus73c2cvsg-a.oregon-postgres.render.com:5432/credflow?sslmode=require
+    url: jdbc:postgresql://dpg-d2d2ucbe5dus73c2cvsg-a:5432/credflow
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
