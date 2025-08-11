@@ -1,11 +1,13 @@
 spring:
   config.activate.on-profile: dev
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
+    url: jdbc:postgresql://dpg-d2d2ucbe5dus73c2cvsg-a.oregon-postgres.render.com:5432/credflow?sslmode=require
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+
   jpa:
-    hibernate.ddl-auto: update
+    hibernate:
+      ddl-auto: update
     properties:
       hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
