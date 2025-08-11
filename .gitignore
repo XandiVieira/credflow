@@ -1,10 +1,14 @@
-HELP.md
+# Maven
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+dependency-reduced-pom.xml
 
-### STS ###
+# Spring Boot
+*.log
+
+# Eclipse / STS
 .apt_generated
 .classpath
 .factorypath
@@ -13,13 +17,13 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
+# IntelliJ IDEA
+.idea/
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -29,5 +33,13 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
+# VS Code
 .vscode/
+
+# Docker
+**/docker-compose.override.yml
+**/docker-compose.local.yml
+
+# OS-specific
+.DS_Store
+Thumbs.db
