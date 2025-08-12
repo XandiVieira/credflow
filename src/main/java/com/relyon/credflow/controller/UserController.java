@@ -22,6 +22,19 @@ public class UserController {
     private final UserService userService;
     private final ModelMapper modelMapper;
 
+    @PostMapping
+    public ResponseEntity<UserResponseDTO> create(
+            @Valid @RequestBody UserRequestDTO dto
+    ) {
+        log.info("POST request to create user: {}", dto.getEmail());
+        var user = modelMapper.map(dto, User.class);
+        var saved = userService.create(user);
+        var response = modelMapper.map(saved, UserResponseDTO.class);
+        log.info("User created with ID {}", saved.getId());
+        return ResponseEntity.status(201).body(response);
+    }
+
+
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         log.info("GET request to fetch all users");

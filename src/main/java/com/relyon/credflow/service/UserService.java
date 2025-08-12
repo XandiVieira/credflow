@@ -6,6 +6,7 @@ import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,6 +16,20 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AccountService accountService;
+
+    @Transactional
+    public User create(User user) {
+        log.info("Creating user: {}", user.getEmail());
+        if (user.getAccount() == null || user.getAccount().getId() == null) {
+            log.info("No account provided. Creating a default account for {}", user.getEmail());
+            var account = accountService.createDefaultFor(user);
+            user.setAccount(account);
+        }
+        var saved = userRepository.save(user);
+        log.info("User created with ID {}", saved.getId());
+        return saved;
+    }
 
     public List<User> findAll() {
         log.info("Fetching all users");
@@ -57,11 +72,6 @@ public class UserService {
         }
         userRepository.deleteById(id);
         log.info("User with ID {} successfully deleted", id);
-    }
-
-    public User create(User user) {
-        log.info("Creating user: {}", user);
-        return userRepository.save(user);
     }
 
     public User findByEmail(String email) {

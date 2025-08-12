@@ -2,10 +2,12 @@ package com.relyon.credflow.service;
 
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
+import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +45,23 @@ public class AccountService {
         var created = accountRepository.save(account);
         log.info("Account created with ID {}", created.getId());
         return created;
+    }
+
+    @Transactional
+    public Account createDefaultFor(User user) {
+        var name = user.getName() != null && !user.getName().isBlank()
+                ? user.getName() + " Finanças"
+                : "Finanças";
+        var description = user.getName() != null && !user.getName().isBlank()
+                ? "Finanças do(a) " + user.getName()
+                : "Finanças";
+
+        var account = new Account();
+        account.setName(name);
+        account.setDescription(description);
+
+        log.info("Creating default account for user {}", user.getEmail());
+        return create(account);
     }
 
     public Account update(Long id, Account updated) {
