@@ -5,6 +5,7 @@ import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AccountService accountService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public User create(User user) {
@@ -26,6 +28,7 @@ public class UserService {
             var account = accountService.createDefaultFor(user);
             user.setAccount(account);
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         var saved = userRepository.save(user);
         log.info("User created with ID {}", saved.getId());
         return saved;
