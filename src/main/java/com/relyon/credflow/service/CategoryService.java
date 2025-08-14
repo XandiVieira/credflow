@@ -37,7 +37,7 @@ public class CategoryService {
 
         var exists = repository.findByNameIgnoreCaseAndAccountId(normalized, accountId).isPresent();
         if (exists) {
-            throw new ResourceAlreadyExistsException("Category with name '" + categoryName + "' already exists.");
+            throw new ResourceAlreadyExistsException("Category with name '" + categoryName + "' already exists fpr this account.");
         }
 
         category.setAccount(accountService.findById(accountId));
