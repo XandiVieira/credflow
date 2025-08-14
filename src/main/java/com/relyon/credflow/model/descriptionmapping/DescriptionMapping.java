@@ -3,10 +3,7 @@ package com.relyon.credflow.model.descriptionmapping;
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
 import io.micrometer.common.util.StringUtils;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Transient;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -19,6 +16,8 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "descriptionMapping",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"normalizedDescription", "account_id"}))
 public class DescriptionMapping extends BaseEntity {
 
     @Column(nullable = false)
