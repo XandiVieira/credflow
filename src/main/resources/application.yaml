@@ -22,3 +22,11 @@ management:
 jwt:
   secret: ${JWT_SECRET}                 # no default; provide per env
   expiration: ${JWT_EXPIRATION_MS:3600000}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger
+    operationsSorter: method
+    tagsSorter: alpha

@@ -3,6 +3,7 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.exception.CsvProcessingException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
+import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
@@ -97,7 +98,7 @@ public class TransactionService {
                     date,
                     description,
                     mapping.getSimplifiedDescription(),
-                    mapping.getCategory() != null ? mapping.getCategory() : "Não Identificado",
+                    mapping.getCategory() != null ? mapping.getCategory() : new Category("Não Identificado", account),
                     value,
                     "Ambos"
             );
@@ -180,7 +181,7 @@ public class TransactionService {
         repository.delete(transaction);
     }
 
-    private void saveMappingIfNotExists(String description, String simplified, String category, Account account) {
+    private void saveMappingIfNotExists(String description, String simplified, Category category, Account account) {
         var normalized = NormalizationUtils.normalizeDescription(description);
         mappingRepository.findByNormalizedDescriptionAndAccountId(normalized, account.getId()).ifPresentOrElse(
                 m -> log.debug("Mapping already exists for normalized: {}", normalized),
@@ -197,7 +198,7 @@ public class TransactionService {
                 });
     }
 
-    public void applyMappingToExistingTransactions(Long accountId, String originalDescription, String simplified, String category) {
+    public void applyMappingToExistingTransactions(Long accountId, String originalDescription, String simplified, Category category) {
         var affected = repository.findByAccountIdAndDescriptionIgnoreCase(accountId, originalDescription);
         affected.forEach(t -> {
             t.setSimplifiedDescription(simplified);
