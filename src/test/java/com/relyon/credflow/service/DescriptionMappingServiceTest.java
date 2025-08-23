@@ -31,6 +31,9 @@ class DescriptionMappingServiceTest {
     @Mock
     private AccountService accountService;
 
+    @Mock
+    private CategoryService categoryService;
+
     @InjectMocks
     private DescriptionMappingService service;
 
@@ -41,7 +44,9 @@ class DescriptionMappingServiceTest {
         var m1 = new DescriptionMapping();
         m1.setOriginalDescription("Loja X 12/03 #123");
         m1.setSimplifiedDescription("Loja X");
-        m1.setCategory(new Category());
+        var category = new Category();
+        category.setId(123L);
+        m1.setCategory(category);
 
         var m2 = new DescriptionMapping();
         m2.setOriginalDescription("Super Y 04/05");
@@ -54,6 +59,7 @@ class DescriptionMappingServiceTest {
 
         var account = new Account();
         account.setId(accountId);
+        when(categoryService.findById(123L, accountId)).thenReturn(category);
         when(accountService.findById(accountId)).thenReturn(account);
 
         var saved1 = new DescriptionMapping();
@@ -96,7 +102,9 @@ class DescriptionMappingServiceTest {
         var updated = new DescriptionMapping();
         updated.setOriginalDescription("Mercado Z 09/09");
         updated.setSimplifiedDescription("Mercado Z");
-        updated.setCategory(new Category());
+        var category = new Category();
+        category.setId(123L);
+        updated.setCategory(category);
 
         var existing = new DescriptionMapping();
         existing.setId(id);
@@ -105,6 +113,7 @@ class DescriptionMappingServiceTest {
         account.setId(accountId);
 
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existing));
+        when(categoryService.findById(123L, accountId)).thenReturn(category);
         when(accountService.findById(accountId)).thenReturn(account);
 
         var saved = new DescriptionMapping();
@@ -168,9 +177,12 @@ class DescriptionMappingServiceTest {
         var updated = new DescriptionMapping();
         updated.setOriginalDescription(null);
         updated.setSimplifiedDescription("New simp");
-        updated.setCategory(new Category());
+        var category = new Category();
+        category.setId(123L);
+        updated.setCategory(category);
 
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existing));
+        when(categoryService.findById(123L, accountId)).thenReturn(category);
         when(accountService.findById(accountId)).thenReturn(account);
 
         when(repository.save(same(existing))).thenAnswer(inv -> inv.getArgument(0));

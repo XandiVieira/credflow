@@ -65,35 +65,35 @@ class CategoryServiceTest {
 
         var result = service.findById(id, accountId);
 
-        assertTrue(result.isPresent());
-        assertSame(cat, result.get());
+        assertNotNull(result);
+        assertSame(cat, result);
 
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);
         verifyNoMoreInteractions(repository, accountService);
     }
 
     @Test
-    void findById_whenMissing_returnsEmptyOptional() {
+    void findById_whenMissing_throwsResourceNotFound() {
         var id = 6L;
         var accountId = 10L;
 
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.empty());
 
-        var result = service.findById(id, accountId);
+        var ex = assertThrows(ResourceNotFoundException.class,
+                () -> service.findById(id, accountId));
 
-        assertTrue(result.isEmpty());
+        assertTrue(ex.getMessage().contains("Category with ID " + id + " not found."));
 
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);
         verifyNoMoreInteractions(repository, accountService);
     }
 
-    // ------- create -------
     @Test
     void create_whenUnique_setsAccount_saves_andReturnsSaved() {
         var accountId = 20L;
 
         var input = new Category();
-        input.setName("  Food  "); // whitespace to exercise trim()
+        input.setName("  Food  ");
         var account = new Account();
         account.setId(accountId);
 
@@ -112,7 +112,6 @@ class CategoryServiceTest {
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("food", accountId);
         verify(accountService, times(1)).findById(accountId);
-        // ensure account was set on the same instance being saved
         assertSame(account, input.getAccount());
         verify(repository, times(1)).save(same(input));
         verifyNoMoreInteractions(repository, accountService);

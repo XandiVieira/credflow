@@ -36,12 +36,13 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryResponseDTO> getById(@PathVariable Long id, @AuthenticationPrincipal AuthenticatedUser user) {
-        log.info("GET category ID {} for account {}", id, user.getAccountId());
+    public ResponseEntity<CategoryResponseDTO> getById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthenticatedUser user) {
 
-        return service.findById(id, user.getAccountId())
-                .map(category -> ResponseEntity.ok(modelMapper.map(category, CategoryResponseDTO.class)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        log.info("GET category ID {} for account {}", id, user.getAccountId());
+        var category = service.findById(id, user.getAccountId());
+        return ResponseEntity.ok(modelMapper.map(category, CategoryResponseDTO.class));
     }
 
     @PostMapping

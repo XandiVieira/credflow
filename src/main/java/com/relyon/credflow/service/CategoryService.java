@@ -9,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,9 +23,10 @@ public class CategoryService {
         return repository.findAllByAccountId(accountId);
     }
 
-    public Optional<Category> findById(Long id, Long accountId) {
+    public Category findById(Long id, Long accountId) {
         log.info("Fetching category ID {} for account {}", id, accountId);
-        return repository.findByIdAndAccountId(id, accountId);
+        return repository.findByIdAndAccountId(id, accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
     }
 
     public Category create(Category category, Long accountId) {

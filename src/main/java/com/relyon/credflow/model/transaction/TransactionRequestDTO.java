@@ -19,7 +19,7 @@ public class TransactionRequestDTO {
 
     private String simplifiedDescription;
 
-    private String category;
+    private Long categoryId;
 
     @NotNull(message = "Value is required")
     @DecimalMin(value = "0.01", message = "Value must be greater than zero")

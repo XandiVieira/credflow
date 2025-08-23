@@ -9,5 +9,5 @@ public class CategoryRequestDTO {
     @NotBlank(message = "Name is required")
     private String name;
 
-    private String defaultResponsible;
+    private Long defaultResponsible;
 }

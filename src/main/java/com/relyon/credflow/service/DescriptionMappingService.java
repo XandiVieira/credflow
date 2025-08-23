@@ -19,6 +19,7 @@ public class DescriptionMappingService {
     private final DescriptionMappingRepository repository;
     private final TransactionService transactionService;
     private final AccountService accountService;
+    private final CategoryService categoryService;
 
     public List<DescriptionMapping> createAll(List<DescriptionMapping> mappings, Long accountId) {
         log.info("Creating {} description mappings for account {}", mappings.size(), accountId);
@@ -28,6 +29,7 @@ public class DescriptionMappingService {
                 .map(mapping -> {
                     normalizeMapping(mapping);
                     mapping.setAccount(accountService.findById(accountId));
+                    mapping.setCategory(categoryService.findById(mapping.getCategory().getId(), accountId));
                     return saveMappingWithAccount(mapping, accountId);
                 })
                 .toList();
@@ -114,7 +116,7 @@ public class DescriptionMappingService {
     private DescriptionMapping applyChangesAndSave(DescriptionMapping existing, DescriptionMapping updated, Long accountId) {
         existing.setOriginalDescription(updated.getOriginalDescription());
         existing.setSimplifiedDescription(updated.getSimplifiedDescription());
-        existing.setCategory(updated.getCategory());
+        existing.setCategory(categoryService.findById(updated.getCategory().getId(), accountId));
         existing.setAccount(accountService.findById(accountId));
 
         var saved = repository.save(existing);
