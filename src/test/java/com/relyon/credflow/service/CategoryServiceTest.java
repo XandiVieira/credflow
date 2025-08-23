@@ -4,6 +4,7 @@ import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
+import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,8 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -27,10 +27,23 @@ class CategoryServiceTest {
     @Mock
     private AccountService accountService;
 
+    @Mock
+    private UserService userService;
+
     @InjectMocks
     private CategoryService service;
 
-    // ------- findAll -------
+    private static User user(Long id, String name) {
+        var u = new User();
+        u.setId(id);
+        u.setName(name);
+        return u;
+    }
+
+    private static Set<User> set(User... users) {
+        return new HashSet<>(Arrays.asList(users));
+    }
+
     @Test
     void findAll_returnsRepositoryResult() {
         var accountId = 10L;
@@ -52,7 +65,6 @@ class CategoryServiceTest {
         verifyNoMoreInteractions(repository, accountService);
     }
 
-    // ------- findById -------
     @Test
     void findById_whenPresent_returnsOptionalWithSameInstance() {
         var id = 5L;
@@ -136,20 +148,24 @@ class CategoryServiceTest {
         verifyNoMoreInteractions(repository, accountService);
     }
 
-    // ------- update -------
     @Test
     void update_whenNoNameConflict_updatesFields_setsAccount_andSaves() {
         var id = 50L;
         var accountId = 30L;
 
+        // incoming update (users in the payload are stubs with only ids)
         var updated = new Category();
         updated.setName("  Transport  ");
-        updated.setDefaultResponsible("John");
+        var john = user(1L, "John");                 // helper that creates a stub user (no account)
+        var updatedDefaults = set(john);
+        updated.setDefaultResponsibles(updatedDefaults);
 
         var existing = new Category();
         existing.setId(id);
         existing.setName("Old");
-        existing.setDefaultResponsible("Old");
+        var oldUser = user(2L, "Old");
+        existing.setDefaultResponsibles(set(oldUser));
+
         var account = new Account();
         account.setId(accountId);
 
@@ -157,24 +173,44 @@ class CategoryServiceTest {
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existing));
         when(accountService.findById(accountId)).thenReturn(account);
 
+        // repository save
         var saved = new Category();
         saved.setId(id);
         saved.setName("Transport");
-        saved.setDefaultResponsible("John");
+        saved.setDefaultResponsibles(updatedDefaults);
         when(repository.save(same(existing))).thenReturn(saved);
+
+        // IMPORTANT: users resolved by the service must carry the same account
+        var resolvedJohn = new User();
+        resolvedJohn.setId(1L);
+        resolvedJohn.setName("John");
+        resolvedJohn.setAccount(account);
+        when(userService.findById(1L)).thenReturn(resolvedJohn);
+
+        // (optional: only needed if your service resolves existing users too)
+        var resolvedOld = new User();
+        resolvedOld.setId(2L);
+        resolvedOld.setName("Old");
+        resolvedOld.setAccount(account);
 
         var result = service.update(id, updated, accountId);
 
         assertSame(saved, result);
-        assertEquals("Transport", existing.getName()); // trimmed applied before save
-        assertEquals("John", existing.getDefaultResponsible());
+        assertEquals("Transport", existing.getName());
         assertSame(account, existing.getAccount());
 
-        verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("transport", accountId);
-        verify(repository, times(1)).findByIdAndAccountId(id, accountId);
-        verify(accountService, times(1)).findById(accountId);
-        verify(repository, times(1)).save(same(existing));
-        verifyNoMoreInteractions(repository, accountService);
+        // assert content, not identity (service may create a new Set instance)
+        var resultingIds = existing.getDefaultResponsibles().stream()
+                .map(User::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        assertEquals(java.util.Set.of(1L), resultingIds);
+
+        verify(repository).findByNameIgnoreCaseAndAccountId("transport", accountId);
+        verify(repository).findByIdAndAccountId(id, accountId);
+        verify(accountService).findById(accountId);
+        verify(userService).findById(1L);
+        verify(repository).save(same(existing));
+        verifyNoMoreInteractions(repository, accountService, userService);
     }
 
     @Test
@@ -182,9 +218,14 @@ class CategoryServiceTest {
         var id = 51L;
         var accountId = 30L;
 
+        // incoming update (stub users carry only IDs)
         var updated = new Category();
         updated.setName("Home");
-        updated.setDefaultResponsible("Jane");
+        var janeStub = new User();
+        janeStub.setId(3L);
+        var updatedDefaults = new java.util.HashSet<User>();
+        updatedDefaults.add(janeStub);
+        updated.setDefaultResponsibles(updatedDefaults);
 
         var existingSame = new Category();
         existingSame.setId(id);
@@ -194,23 +235,38 @@ class CategoryServiceTest {
         account.setId(accountId);
 
         when(repository.findByNameIgnoreCaseAndAccountId("home", accountId))
-                .thenReturn(Optional.of(existingSame)); // same id -> no conflict
-        when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existingSame));
+                .thenReturn(Optional.of(existingSame)); // same entity -> no conflict
+        when(repository.findByIdAndAccountId(id, accountId))
+                .thenReturn(Optional.of(existingSame));
         when(accountService.findById(accountId)).thenReturn(account);
+
+        // userService must return a user that belongs to the same account
+        var resolvedJane = new User();
+        resolvedJane.setId(3L);
+        resolvedJane.setName("Jane");
+        resolvedJane.setAccount(account); // <-- IMPORTANT: prevent NPE in service
+        when(userService.findById(3L)).thenReturn(resolvedJane);
+
         when(repository.save(same(existingSame))).thenReturn(existingSame);
 
         var result = service.update(id, updated, accountId);
 
+        // same entity returned
         assertSame(existingSame, result);
         assertEquals("Home", existingSame.getName());
-        assertEquals("Jane", existingSame.getDefaultResponsible());
         assertSame(account, existingSame.getAccount());
+
+        // the service likely replaces the set instance; assert content, not identity
+        assertEquals(1, existingSame.getDefaultResponsibles().size());
+        assertTrue(existingSame.getDefaultResponsibles()
+                .stream().anyMatch(u -> u.getId().equals(3L)));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("home", accountId);
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);
         verify(accountService, times(1)).findById(accountId);
+        verify(userService, times(1)).findById(3L);
         verify(repository, times(1)).save(same(existingSame));
-        verifyNoMoreInteractions(repository, accountService);
+        verifyNoMoreInteractions(repository, accountService, userService);
     }
 
     @Test
@@ -222,7 +278,7 @@ class CategoryServiceTest {
         updated.setName("Bills");
 
         var conflicting = new Category();
-        conflicting.setId(999L); // different id -> conflict
+        conflicting.setId(999L);
 
         when(repository.findByNameIgnoreCaseAndAccountId("bills", accountId))
                 .thenReturn(Optional.of(conflicting));
@@ -258,7 +314,6 @@ class CategoryServiceTest {
         verifyNoMoreInteractions(repository, accountService);
     }
 
-    // ------- delete -------
     @Test
     void delete_whenFound_deletesCategory() {
         var id = 70L;

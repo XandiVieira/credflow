@@ -1,5 +1,6 @@
 package com.relyon.credflow.controller;
 
+import com.relyon.credflow.model.mapper.UserMapper;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.model.user.UserResponseDTO;
@@ -7,7 +8,6 @@ import com.relyon.credflow.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,26 +20,23 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    private final ModelMapper modelMapper;
+    private final UserMapper mapper;
 
     @PostMapping
-    public ResponseEntity<UserResponseDTO> create(
-            @Valid @RequestBody UserRequestDTO dto
-    ) {
+    public ResponseEntity<UserResponseDTO> create(@Valid @RequestBody UserRequestDTO dto) {
         log.info("POST request to create user: {}", dto.getEmail());
-        var user = modelMapper.map(dto, User.class);
+        User user = mapper.toEntity(dto);
         var saved = userService.create(user);
-        var response = modelMapper.map(saved, UserResponseDTO.class);
+        var response = mapper.toDto(saved);
         log.info("User created with ID {}", saved.getId());
         return ResponseEntity.status(201).body(response);
     }
-
 
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         log.info("GET request to fetch all users");
         var users = userService.findAll().stream()
-                .map(user -> modelMapper.map(user, UserResponseDTO.class))
+                .map(mapper::toDto)
                 .toList();
         log.info("Returning {} users", users.size());
         return ResponseEntity.ok(users);
@@ -49,7 +46,7 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> findById(@PathVariable Long id) {
         log.info("GET request to fetch user with ID {}", id);
         var user = userService.findById(id);
-        var response = modelMapper.map(user, UserResponseDTO.class);
+        var response = mapper.toDto(user);
         return ResponseEntity.ok(response);
     }
 
@@ -59,9 +56,9 @@ public class UserController {
             @Valid @RequestBody UserRequestDTO dto
     ) {
         log.info("PUT request to update user with ID {}", id);
-        var updatedUser = modelMapper.map(dto, User.class);
-        var saved = userService.update(id, updatedUser);
-        var response = modelMapper.map(saved, UserResponseDTO.class);
+        User patch = mapper.toEntity(dto);
+        var saved = userService.update(id, patch);
+        var response = mapper.toDto(saved);
         log.info("User with ID {} successfully updated", id);
         return ResponseEntity.ok(response);
     }

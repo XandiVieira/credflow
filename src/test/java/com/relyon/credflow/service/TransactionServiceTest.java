@@ -63,7 +63,7 @@ class TransactionServiceTest {
         when(mappingRepository.findAllByAccountId(accountId)).thenReturn(List.of(mapping));
 
         var csv = ("Header;Ignore\n" +
-                "12/03/2025;\""+desc+"\";R$ 1.234,56;X\n").getBytes(StandardCharsets.UTF_8);
+                "12/03/2025;\"" + desc + "\";R$ 1.234,56;X\n").getBytes(StandardCharsets.UTF_8);
         var file = mock(MultipartFile.class);
         when(file.getOriginalFilename()).thenReturn("file.csv");
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(csv));
@@ -147,7 +147,8 @@ class TransactionServiceTest {
     @Test
     void importFromBanrisulCSV_parsingError_returnsEmpty_doesNotSaveAnything() throws Exception {
         var accountId = 21L;
-        var account = new Account(); account.setId(accountId);
+        var account = new Account();
+        account.setId(accountId);
         when(accountService.findById(accountId)).thenReturn(account);
         when(mappingRepository.findAllByAccountId(accountId)).thenReturn(List.of());
 
@@ -167,14 +168,15 @@ class TransactionServiceTest {
     @Test
     void importFromBanrisulCSV_twoLinesSameNormalized_createsSingleNewMapping_savesTwoTransactions() throws Exception {
         var accountId = 22L;
-        var account = new Account(); account.setId(accountId);
+        var account = new Account();
+        account.setId(accountId);
         when(accountService.findById(accountId)).thenReturn(account);
         when(mappingRepository.findAllByAccountId(accountId)).thenReturn(List.of());
 
         var desc = "Loja XPTO 10/10";
         var csv = ("h;i\n" +
-                "10/10/2025;\""+desc+"\";R$ 10,00;X\n" +
-                "10/10/2025;\""+desc+"\";R$ 20,00;X\n").getBytes(StandardCharsets.UTF_8);
+                "10/10/2025;\"" + desc + "\";R$ 10,00;X\n" +
+                "10/10/2025;\"" + desc + "\";R$ 20,00;X\n").getBytes(StandardCharsets.UTF_8);
         var file = mock(MultipartFile.class);
         when(file.getOriginalFilename()).thenReturn("dup.csv");
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(csv));
@@ -187,14 +189,17 @@ class TransactionServiceTest {
         assertEquals(2, res.size());
         verify(repository, times(2)).save(any(Transaction.class));
         verify(mappingRepository, times(1)).saveAll(argThat(iterable -> {
-            int count = 0; for (var __ : iterable) count++; return count == 1;
+            int count = 0;
+            for (var __ : iterable) count++;
+            return count == 1;
         }));
     }
 
     @Test
     void importFromBanrisulCSV_setsChecksumOnSavedTransaction() throws Exception {
         var accountId = 23L;
-        var account = new Account(); account.setId(accountId);
+        var account = new Account();
+        account.setId(accountId);
         when(accountService.findById(accountId)).thenReturn(account);
         when(mappingRepository.findAllByAccountId(accountId)).thenReturn(List.of());
 
@@ -219,7 +224,8 @@ class TransactionServiceTest {
     @Test
     void importFromBanrisulCSV_existingMappingWithoutCategory_usesDefaultCategoryAndSetsAccount() throws Exception {
         var accountId = 55L;
-        var account = new Account(); account.setId(accountId);
+        var account = new Account();
+        account.setId(accountId);
 
         var desc = "Sem Categoria 10/10";
         var normalized = NormalizationUtils.normalizeDescription(desc);
@@ -234,7 +240,7 @@ class TransactionServiceTest {
         when(mappingRepository.findAllByAccountId(accountId)).thenReturn(List.of(mapping));
 
         var csv = ("head;head\n" +
-                "10/10/2025;\""+desc+"\";R$ 10,00;X\n").getBytes(StandardCharsets.UTF_8);
+                "10/10/2025;\"" + desc + "\";R$ 10,00;X\n").getBytes(StandardCharsets.UTF_8);
         var file = mock(MultipartFile.class);
         when(file.getOriginalFilename()).thenReturn("m.csv");
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(csv));

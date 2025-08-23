@@ -37,14 +37,16 @@ class UserServiceTest {
 
     @Test
     void create_whenUserHasAccountId_usesGivenAccount_encodesPassword_andSaves() {
-        var acc = new Account(); acc.setId(5L);
+        var acc = new Account();
+        acc.setId(5L);
         var u = new User();
         u.setEmail("a@b.com");
         u.setPassword("raw");
         u.setAccount(acc);
 
         when(passwordEncoder.encode("raw")).thenReturn("enc");
-        var saved = new User(); saved.setId(1L);
+        var saved = new User();
+        saved.setId(1L);
         when(userRepository.save(same(u))).thenReturn(saved);
 
         var res = service.create(u);
@@ -63,10 +65,12 @@ class UserServiceTest {
         u.setEmail("x@y.com");
         u.setPassword("p");
 
-        var createdAcc = new Account(); createdAcc.setId(9L);
+        var createdAcc = new Account();
+        createdAcc.setId(9L);
         when(accountService.createDefaultFor(same(u))).thenReturn(createdAcc);
         when(passwordEncoder.encode("p")).thenReturn("encP");
-        var saved = new User(); saved.setId(2L);
+        var saved = new User();
+        saved.setId(2L);
         when(userRepository.save(same(u))).thenReturn(saved);
 
         var res = service.create(u);
@@ -93,10 +97,12 @@ class UserServiceTest {
         u.setPassword("p");
         u.setAccount(new Account()); // id null
 
-        var createdAcc = new Account(); createdAcc.setId(77L);
+        var createdAcc = new Account();
+        createdAcc.setId(77L);
         when(accountService.createDefaultFor(same(u))).thenReturn(createdAcc);
         when(passwordEncoder.encode("p")).thenReturn("enc");
-        var saved = new User(); saved.setId(5L);
+        var saved = new User();
+        saved.setId(5L);
         when(userRepository.save(same(u))).thenReturn(saved);
 
         var res = service.create(u);
@@ -112,7 +118,8 @@ class UserServiceTest {
 
     @Test
     void findAll_returnsRepositoryList() {
-        var u1 = new User(); var u2 = new User();
+        var u1 = new User();
+        var u2 = new User();
         when(userRepository.findAll()).thenReturn(List.of(u1, u2));
 
         var res = service.findAll();
@@ -147,16 +154,19 @@ class UserServiceTest {
     @Test
     void update_whenFound_updatesFields_andSaves() {
         var id = 3L;
-        var existing = new User(); existing.setId(id);
+        var existing = new User();
+        existing.setId(id);
         when(userRepository.findById(id)).thenReturn(Optional.of(existing));
 
         var patch = new User();
         patch.setName("N");
         patch.setEmail("e@x.com");
-        var acc = new Account(); acc.setId(1L);
+        var acc = new Account();
+        acc.setId(1L);
         patch.setAccount(acc);
 
-        var saved = new User(); saved.setId(id);
+        var saved = new User();
+        saved.setId(id);
         when(userRepository.save(same(existing))).thenReturn(saved);
 
         var res = service.update(id, patch);

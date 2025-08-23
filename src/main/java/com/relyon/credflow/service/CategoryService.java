@@ -3,12 +3,15 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.category.Category;
+import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +20,7 @@ public class CategoryService {
 
     private final CategoryRepository repository;
     private final AccountService accountService;
+    private final UserService userService;
 
     public List<Category> findAll(Long accountId) {
         log.info("Fetching all categories for account {}", accountId);
@@ -29,31 +33,59 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
     }
 
+    @Transactional
     public Category create(Category category, Long accountId) {
-        var categoryName = category.getName().trim();
-        var normalized = categoryName.toLowerCase();
+        var name = category.getName().trim();
+        var normalized = name.toLowerCase();
 
-        log.info("Creating category '{}' for account {}", categoryName, accountId);
-
-        var exists = repository.findByNameIgnoreCaseAndAccountId(normalized, accountId).isPresent();
-        if (exists) {
-            throw new ResourceAlreadyExistsException("Category with name '" + categoryName + "' already exists fpr this account.");
+        if (repository.findByNameIgnoreCaseAndAccountId(normalized, accountId).isPresent()) {
+            throw new ResourceAlreadyExistsException(
+                    "Category with name '" + name + "' already exists for this account."
+            );
         }
 
-        category.setAccount(accountService.findById(accountId));
+        var account = accountService.findById(accountId);
+        category.setAccount(account);
 
-        var saved = repository.save(category);
-        log.info("Category '{}' created with ID {}", saved.getName(), saved.getId());
-        return saved;
+        category.setDefaultResponsibles(
+                resolveResponsiblesForAccount(category.getDefaultResponsibles(), accountId)
+        );
+
+        return repository.save(category);
     }
 
+    private Set<User> resolveResponsiblesForAccount(
+            Set<User> stubs, Long accountId) {
+
+        if (stubs == null || stubs.isEmpty()) return java.util.Collections.emptySet();
+
+        var ids = stubs.stream().map(User::getId).toList();
+
+        var users = new java.util.LinkedHashSet<User>();
+        for (Long id : ids) {
+            var u = userService.findById(id); // throws if not found
+            if (!u.getAccount().getId().equals(accountId)) {
+                throw new IllegalArgumentException(
+                        "User " + id + " does not belong to this account."
+                );
+            }
+            users.add(u);
+        }
+        return users;
+    }
+
+    @Transactional
     public Category update(Long id, Category updated, Long accountId) {
-        var newName = updated.getName().trim();
+        var newName = updated.getName() != null ? updated.getName().trim() : "";
+        if (newName.isBlank()) {
+            throw new IllegalArgumentException("Category name cannot be blank.");
+        }
+
         log.info("Updating category ID {} for accountId {}", id, accountId);
 
         repository.findByNameIgnoreCaseAndAccountId(newName.toLowerCase(), accountId)
                 .filter(existing -> !existing.getId().equals(id))
-                .ifPresent(existing -> {
+                .ifPresent(_ -> {
                     throw new ResourceAlreadyExistsException("A category with name '" + newName + "' already exists.");
                 });
 
@@ -61,8 +93,14 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
 
         category.setName(newName);
-        category.setDefaultResponsible(updated.getDefaultResponsible());
         category.setAccount(accountService.findById(accountId));
+
+        var incoming = updated.getDefaultResponsibles();
+        if (incoming != null) {
+            var resolved = resolveResponsiblesForAccount(incoming, accountId);
+            category.getDefaultResponsibles().clear();
+            category.getDefaultResponsibles().addAll(resolved);
+        }
 
         var saved = repository.save(category);
         log.info("Category ID {} updated", saved.getId());

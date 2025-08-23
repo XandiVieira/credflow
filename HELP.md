@@ -6,6 +6,7 @@ It exposes a secure REST API (JWT-based), persists to PostgreSQL, and ships with
 ---
 
 ## Table of Contents
+
 - [Requirements](#requirements)
 - [Architecture Overview](#architecture-overview)
 - [Quick Start (Local)](#quick-start-local)
@@ -23,6 +24,7 @@ It exposes a secure REST API (JWT-based), persists to PostgreSQL, and ships with
 ---
 
 ## Requirements
+
 - Java 17+
 - Maven 3.9+
 - PostgreSQL 14+
@@ -31,6 +33,7 @@ It exposes a secure REST API (JWT-based), persists to PostgreSQL, and ships with
 ---
 
 ## Architecture Overview
+
 - **Spring Boot** (REST + Validation)
 - **Spring Security** with **JWT**
 - **JPA/Hibernate** with PostgreSQL
@@ -42,6 +45,7 @@ It exposes a secure REST API (JWT-based), persists to PostgreSQL, and ships with
 ## Quick Start (Local)
 
 1) **Clone**
+
 ```bash
 git clone https://github.com/XandiVieira/credflow.git
 cd credflow

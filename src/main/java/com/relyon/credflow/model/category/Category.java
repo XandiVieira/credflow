@@ -2,12 +2,16 @@ package com.relyon.credflow.model.category;
 
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
+import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @EqualsAndHashCode(callSuper = true)
@@ -27,7 +31,14 @@ public class Category extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
-    private String defaultResponsible;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "category_default_responsibles",
+            joinColumns = @JoinColumn(name = "category_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"category_id", "user_id"})
+    )
+    private Set<User> defaultResponsibles = new HashSet<>();
 
     @ManyToOne(optional = false)
     private Account account;
