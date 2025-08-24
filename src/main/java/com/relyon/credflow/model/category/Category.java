@@ -13,8 +13,11 @@ import java.util.Set;
 @Entity
 @Table(name = "category",
         uniqueConstraints = @UniqueConstraint(columnNames = {"name", "account_id"}))
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Category extends BaseEntity {

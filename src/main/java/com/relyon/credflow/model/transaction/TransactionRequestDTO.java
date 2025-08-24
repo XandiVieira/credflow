@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class TransactionRequestDTO {
@@ -25,9 +26,5 @@ public class TransactionRequestDTO {
     @DecimalMin(value = "0.01", message = "Value must be greater than zero")
     private BigDecimal value;
 
-    @NotBlank(message = "Responsible is required")
-    private String responsible;
-
-    @NotNull(message = "Account ID is required")
-    private Long accountId;
+    private List<Long> responsibles;
 }

@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -39,6 +40,15 @@ public class UserService {
         var users = userRepository.findAll();
         log.info("Found {} users", users.size());
         return users;
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> findAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        log.info("Fetching users by ids {}", ids);
+        var result = new ArrayList<>(userRepository.findAllById(ids));
+        log.info("Found {} users for ids {}", result.size(), ids);
+        return result;
     }
 
     public User findById(Long id) {

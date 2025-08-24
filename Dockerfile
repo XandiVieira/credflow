@@ -1,23 +1,23 @@
 # ---------- Build ----------
-FROM amazoncorretto:22-alpine AS build
+FROM amazoncorretto:21-alpine AS build
 WORKDIR /app
 
 # Tools needed by Maven Wrapper
-RUN apk add --no-cache curl unzip bash
+RUN apk add --no-cache bash curl unzip
 
-# Cache deps
+# Prepare Maven Wrapper and cache dependencies
 COPY mvnw ./
 COPY .mvn .mvn
 COPY pom.xml ./
-RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
-RUN ./mvnw -q -DskipTests dependency:go-offline
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw \
+ && ./mvnw -B -q -DskipTests dependency:go-offline
 
 # Build
 COPY src ./src
-RUN ./mvnw -DskipTests clean package
+RUN ./mvnw -B -DskipTests clean package
 
 # ---------- Run ----------
-FROM amazoncorretto:22-alpine
+FROM amazoncorretto:21-alpine
 WORKDIR /app
 
 # Non-root user
@@ -30,4 +30,4 @@ USER app
 # Runtime
 ENV JAVA_OPTS="-Xms256m -Xmx512m -Djava.security.egd=file:/dev/./urandom"
 EXPOSE 10000
-CMD ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

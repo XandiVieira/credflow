@@ -6,6 +6,7 @@ import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.utils.NormalizationUtils;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -22,10 +24,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,31 +36,35 @@ public class TransactionService {
     private final TransactionRepository repository;
     private final DescriptionMappingRepository mappingRepository;
     private final AccountService accountService;
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private final UserService userService;
+
+    private final DateTimeFormatter banrisulCsvDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    // ---------- CSV import ----------
 
     public List<Transaction> importFromBanrisulCSV(MultipartFile file, Long accountId) {
         var account = accountService.findById(accountId);
         log.info("Starting CSV import: {}", file.getOriginalFilename());
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            var mappings = preloadMappings(accountId);
-            var newMappings = new HashMap<String, DescriptionMapping>();
+        try (var reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            var existing = preloadMappings(accountId);
+            var pending = new HashMap<String, DescriptionMapping>();
 
-            var transactions = reader.lines()
+            var saved = reader.lines()
                     .dropWhile(line -> !line.matches("^\\d{2}/\\d{2}/\\d{4}.*"))
-                    .map(line -> parseLineToTransaction(line, account, mappings, newMappings))
+                    .map(line -> parseLine(line, account, existing, pending))
                     .flatMap(Optional::stream)
-                    .filter(this::isNotDuplicate)
+                    .filter(this::isNotDuplicateByChecksum)
                     .map(repository::save)
                     .toList();
 
-            if (!newMappings.isEmpty()) {
-                log.info("Saving {} new mappings detected during import", newMappings.size());
-                mappingRepository.saveAll(newMappings.values());
+            if (!pending.isEmpty()) {
+                log.info("Saving {} new mappings detected during import", pending.size());
+                mappingRepository.saveAll(pending.values());
             }
 
-            log.info("Import completed. Transactions saved: {}", transactions.size());
-            return transactions;
+            log.info("Import completed. Transactions saved: {}", saved.size());
+            return saved;
 
         } catch (Exception e) {
             log.error("Error processing CSV: {}", e.getMessage(), e);
@@ -69,21 +72,26 @@ public class TransactionService {
         }
     }
 
-    private boolean isNotDuplicate(Transaction t) {
-        boolean exists = repository.existsByChecksum(t.getChecksum());
+    private boolean isNotDuplicateByChecksum(Transaction t) {
+        var exists = repository.existsByChecksum(t.getChecksum());
         if (exists) log.info("Duplicate transaction skipped (checksum={}): {}", t.getChecksum(), t);
         return !exists;
     }
 
-    private Optional<Transaction> parseLineToTransaction(String line, Account account, Map<String, DescriptionMapping> existingMappings, Map<String, DescriptionMapping> newMappings) {
+    private Optional<Transaction> parseLine(
+            String line,
+            Account account,
+            Map<String, DescriptionMapping> existing,
+            Map<String, DescriptionMapping> pending
+    ) {
         try {
             var parts = line.split(";", 4);
-            var date = LocalDate.parse(parts[0].trim(), formatter);
+            var date = LocalDate.parse(parts[0].trim(), banrisulCsvDate);
             var description = parts[1].replace("\"", "").trim();
             var value = new BigDecimal(parts[2].replace("R$", "").replace(".", "").replace(",", ".").trim());
 
             var normalized = NormalizationUtils.normalizeDescription(description);
-            var mapping = Optional.ofNullable(existingMappings.get(normalized)).orElse(newMappings.get(normalized));
+            var mapping = Optional.ofNullable(existing.get(normalized)).orElse(pending.get(normalized));
 
             if (mapping == null) {
                 mapping = DescriptionMapping.builder()
@@ -91,20 +99,20 @@ public class TransactionService {
                         .normalizedDescription(normalized)
                         .account(account)
                         .build();
-                newMappings.put(normalized, mapping);
+                pending.put(normalized, mapping);
             }
 
-            var transaction = new Transaction(
+            var tx = new Transaction(
                     date,
                     description,
                     mapping.getSimplifiedDescription(),
                     mapping.getCategory() != null ? mapping.getCategory() : new Category("Não Identificado", account),
                     value,
-                    "Ambos"
+                    null // responsibles will be empty on CSV
             );
-            transaction.setChecksum(DigestUtils.sha256Hex(line.trim()));
-            transaction.setAccount(account);
-            return Optional.of(transaction);
+            tx.setChecksum(DigestUtils.sha256Hex(line.trim()));
+            tx.setAccount(account);
+            return Optional.of(tx);
 
         } catch (Exception ex) {
             log.warn("Line ignored due to parsing error: [{}] - {}", line, ex.getMessage());
@@ -117,18 +125,48 @@ public class TransactionService {
                 .collect(Collectors.toMap(DescriptionMapping::getNormalizedDescription, Function.identity()));
     }
 
-    public Transaction create(Transaction transaction) {
-        log.info("Creating new transaction: {}", transaction);
-        saveMappingIfNotExists(transaction.getDescription(), transaction.getSimplifiedDescription(), transaction.getCategory(), transaction.getAccount());
-        return repository.save(transaction);
+    // ---------- CRUD ----------
+
+    @Transactional
+    public Transaction create(Transaction tx, Long accountId) {
+        tx.setAccount(accountService.findById(accountId));
+        tx.setResponsibles(resolveResponsiblesForAccount(tx.getResponsibles(), accountId));
+        saveMappingIfNotExists(tx.getDescription(), tx.getSimplifiedDescription(), tx.getCategory(), tx.getAccount());
+        return repository.save(tx);
+    }
+
+    private Set<User> resolveResponsiblesForAccount(Set<User> stubs, Long accountId) {
+        if (stubs == null || stubs.isEmpty()) return Collections.emptySet();
+
+        var ids = stubs.stream().map(User::getId).toList();
+        var found = userService.findAllByIds(ids);
+        if (found.size() != ids.size()) {
+            throw new IllegalArgumentException("One or more users not found: " + ids);
+        }
+
+        for (User u : found) {
+            if (u.getAccount() == null || !u.getAccount().getId().equals(accountId)) {
+                throw new IllegalArgumentException("User " + u.getId() + " does not belong to this account.");
+            }
+        }
+        return new LinkedHashSet<>(found);
     }
 
     public Transaction update(Long id, Transaction updated, Long accountId) {
         log.info("Updating transaction ID {}: {}", id, updated);
 
         return repository.findByIdAndAccountId(id, accountId).map(existing -> {
-            updateTransactionFields(existing, updated);
-            saveMappingIfNotExists(updated.getDescription(), updated.getSimplifiedDescription(), updated.getCategory(), accountService.findById(accountId));
+            existing.setDate(updated.getDate());
+            existing.setDescription(updated.getDescription());
+            existing.setSimplifiedDescription(updated.getSimplifiedDescription());
+            existing.setCategory(updated.getCategory());
+            existing.setValue(updated.getValue());
+            existing.setResponsibles(resolveResponsiblesForAccount(updated.getResponsibles(), accountId));
+
+            saveMappingIfNotExists(
+                    updated.getDescription(), updated.getSimplifiedDescription(),
+                    updated.getCategory(), accountService.findById(accountId)
+            );
             return repository.save(existing);
         }).orElseThrow(() -> {
             log.warn("Transaction with ID {} not found for update", id);
@@ -136,37 +174,52 @@ public class TransactionService {
         });
     }
 
-    private void updateTransactionFields(Transaction existing, Transaction updated) {
-        existing.setDate(updated.getDate());
-        existing.setDescription(updated.getDescription());
-        existing.setSimplifiedDescription(updated.getSimplifiedDescription());
-        existing.setCategory(updated.getCategory());
-        existing.setValue(updated.getValue());
-        existing.setResponsible(updated.getResponsible());
+    // ---------- Search / filter ----------
+
+    public List<Transaction> findByFilters(
+            Long accountId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            String descriptionContains,
+            String simplifiedContains,
+            BigDecimal minAmount,
+            BigDecimal maxAmount,
+            List<Long> responsibleUserIds,
+            List<Long> categoryIds,
+            Sort sort
+    ) {
+        var descPattern = toLikePattern(descriptionContains);
+        var simpPattern = toLikePattern(simplifiedContains);
+
+        var safeSort = (sort == null || sort.isUnsorted())
+                ? Sort.by(Sort.Order.desc("date"))
+                : sort;
+
+        var respIds = (responsibleUserIds == null || responsibleUserIds.isEmpty()) ? null : responsibleUserIds;
+        var catIds  = (categoryIds == null || categoryIds.isEmpty()) ? null : categoryIds;
+
+        log.info("Querying transactions: from={}, to={}, desc~'{}', simp~'{}', min={}, max={}, respIds={}, catIds={}, sort={}",
+                fromDate, toDate, descPattern, simpPattern, minAmount, maxAmount, respIds, catIds, safeSort);
+
+        return repository.search(
+                accountId,
+                descPattern,
+                simpPattern,
+                fromDate,
+                toDate,
+                minAmount,
+                maxAmount,
+                respIds,
+                catIds,
+                safeSort
+        );
     }
 
-    public List<Transaction> findFiltered(Long accountId, String responsible, String category, String startDate, String endDate, String sortKey) {
-        var effResponsible = responsible != null ? responsible : "Ambos";
-        var start = startDate != null ? LocalDate.parse(startDate) : null;
-        var end = endDate != null ? LocalDate.parse(endDate) : null;
-
-        var sort = resolveSort(sortKey);
-        log.info("Querying transactions: responsible={}, category={}, start={}, end={}, sort={}", effResponsible, category, start, end, sortKey);
-
-        return category == null ?
-                repository.findByAccountIdAndResponsibleAndDateBetween(accountId, effResponsible, start, end, sort) :
-                repository.findByAccountIdAndResponsibleAndCategoryAndDateBetween(accountId, effResponsible, category, start, end, sort);
-    }
-
-    private Sort resolveSort(String sortKey) {
-        return switch (sortKey) {
-            case "date" -> Sort.by("date").ascending();
-            case "value" -> Sort.by("value").ascending();
-            case "valueDesc" -> Sort.by("value").descending();
-            case "description" -> Sort.by("description").ascending();
-            case "descriptionDesc" -> Sort.by("description").descending();
-            default -> Sort.by("date").descending();
-        };
+    private static String toLikePattern(String s) {
+        if (s == null) return null;
+        var trimmed = s.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("null")) return null;
+        return "%" + trimmed.toLowerCase(Locale.ROOT) + "%";
     }
 
     public Optional<Transaction> findById(Long id, Long accountId) {
@@ -176,10 +229,12 @@ public class TransactionService {
 
     public void delete(Long id, Long accountId) {
         log.info("Deleting transaction ID: {}", id);
-        var transaction = repository.findByIdAndAccountId(id, accountId)
+        var tx = repository.findByIdAndAccountId(id, accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
-        repository.delete(transaction);
+        repository.delete(tx);
     }
+
+    // ---------- Mapping helper ----------
 
     private void saveMappingIfNotExists(String description, String simplified, Category category, Account account) {
         var normalized = NormalizationUtils.normalizeDescription(description);

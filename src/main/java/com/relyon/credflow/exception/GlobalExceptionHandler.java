@@ -1,5 +1,7 @@
 package com.relyon.credflow.exception;
 
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -31,13 +33,23 @@ public class GlobalExceptionHandler {
                 "status", HttpStatus.BAD_REQUEST.value(),
                 "message", ex.getMessage()
         );
-
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR));
+    @ExceptionHandler({ PropertyReferenceException.class, InvalidDataAccessApiUsageException.class })
+    public ResponseEntity<Map<String, Object>> handleInvalidSort(RuntimeException ex) {
+        String message;
+        if (ex instanceof PropertyReferenceException pre) {
+            message = "Invalid sort property: " + pre.getPropertyName();
+        } else {
+            message = "Invalid query/sort parameter: " + ex.getMessage();
+        }
+        return ResponseEntity.badRequest().body(buildErrorResponse(message, HttpStatus.BAD_REQUEST));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -47,7 +59,6 @@ public class GlobalExceptionHandler {
                 .stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
-
         return ResponseEntity.badRequest().body(buildErrorResponse(errorMessages, HttpStatus.BAD_REQUEST));
     }
 
@@ -58,7 +69,6 @@ public class GlobalExceptionHandler {
                 .stream()
                 .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .collect(Collectors.joining("; "));
-
         return ResponseEntity.badRequest().body(buildErrorResponse(errorMessages, HttpStatus.BAD_REQUEST));
     }
 
@@ -68,6 +78,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(buildErrorResponse(message, HttpStatus.BAD_REQUEST));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(buildErrorResponse(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     private Map<String, Object> buildErrorResponse(String message, HttpStatus status) {
