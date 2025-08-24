@@ -9,7 +9,7 @@ spring:
 
 server:
   servlet.context-path: /credflow/api
-  port: ${PORT:10000}
+  port: ${PORT:8080}
   forward-headers-strategy: native
   compression.enabled: true
   shutdown: graceful
