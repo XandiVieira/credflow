@@ -4,6 +4,7 @@ import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.user.User;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import lombok.*;
@@ -41,4 +42,8 @@ public class Account extends BaseEntity {
 
     @ToString.Include
     private String description;
+
+    @ToString.Include
+    @Column(unique = true)
+    private String inviteCode;
 }

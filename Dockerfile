@@ -1,5 +1,5 @@
 # ---------- Build ----------
-FROM amazoncorretto:21-alpine AS build
+FROM eclipse-temurin:23-jdk-alpine AS build
 WORKDIR /app
 
 # Tools needed by Maven Wrapper

@@ -4,6 +4,7 @@ import com.relyon.credflow.configuration.JwtUtil;
 import com.relyon.credflow.model.user.AuthRequest;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.model.user.UserRequestDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,7 +23,7 @@ public class AuthenticationService {
     private final AuthenticationManager authManager;
     private final JwtUtil jwtUtil;
 
-    public User register(User user) {
+    public User register(UserRequestDTO user) {
         log.info("Registering user: {}", user.getEmail());
         return userService.create(user);
     }

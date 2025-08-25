@@ -4,6 +4,7 @@ import com.relyon.credflow.configuration.JwtUtil;
 import com.relyon.credflow.model.user.AuthRequest;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.model.user.UserRequestDTO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class AuthenticationServiceTest {
 
     @Test
     void register_delegatesToUserServiceCreate_andReturnsCreatedUser() {
-        var toCreate = new User();
+        var toCreate = new UserRequestDTO();
         toCreate.setEmail("new@user.com");
 
         var created = new User();

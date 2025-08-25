@@ -2,6 +2,7 @@ package com.relyon.credflow.service;
 
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,16 +23,23 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public User create(User user) {
-        log.info("Creating user: {}", user.getEmail());
-        if (user.getAccount() == null || user.getAccount().getId() == null) {
-            log.info("No account provided. Creating a default account for {}", user.getEmail());
-            var account = accountService.createDefaultFor(user);
-            user.setAccount(account);
+    public User create(UserRequestDTO dto) {
+        log.info("Creating user: {}", dto.getEmail());
+
+        var user = new User();
+        user.setEmail(dto.getEmail());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setName(dto.getName());
+
+        if (dto.getInviteCode() != null && !dto.getInviteCode().isBlank()) {
+            user.setAccount(accountService.findByInviteCode(dto.getInviteCode()));
+        } else {
+            user.setAccount(accountService.createDefaultFor(user));
         }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        var saved = userRepository.save(user);
-        log.info("User created with ID {}", saved.getId());
+
+        User saved = userRepository.save(user);
+        log.info("User created with ID {} and account ID {}", saved.getId(), saved.getAccount().getId());
+
         return saved;
     }
 

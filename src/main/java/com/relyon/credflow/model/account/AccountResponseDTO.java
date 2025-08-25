@@ -10,4 +10,5 @@ public class AccountResponseDTO {
     private String name;
     private String description;
     private List<Long> userIds;
+    private String inviteCode;
 }

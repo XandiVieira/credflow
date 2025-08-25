@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +33,15 @@ public class AccountService {
                 .orElseThrow(() -> {
                     log.warn("Account with ID {} not found", id);
                     return new ResourceNotFoundException("Account not found with ID " + id);
+                });
+    }
+
+    public Account findByInviteCode(String code) {
+        log.info("Fetching account by invite code {}", code);
+        return accountRepository.findByInviteCode(code)
+                .orElseThrow(() -> {
+                    log.warn("Account with invite code {} not found", code);
+                    return new ResourceNotFoundException("Account not found with invite code " + code);
                 });
     }
 
@@ -59,9 +69,18 @@ public class AccountService {
         var account = new Account();
         account.setName(name);
         account.setDescription(description);
+        account.setInviteCode(generateUniqueInviteCode());
 
         log.info("Creating default account for user {}", user.getEmail());
         return create(account);
+    }
+
+    private String generateUniqueInviteCode() {
+        String code;
+        do {
+            code = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        } while (accountRepository.findByInviteCode(code).isPresent());
+        return code;
     }
 
     public Account update(Long id, Account updated) {

@@ -2,7 +2,6 @@ package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.UserMapper;
 import com.relyon.credflow.model.user.AuthRequest;
-import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.model.user.UserResponseDTO;
 import com.relyon.credflow.service.AuthenticationService;
@@ -15,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.Map;
 
 @Slf4j
@@ -29,9 +29,10 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody UserRequestDTO request) {
         log.info("Registering user: {}", request.getEmail());
-        User user = userMapper.toEntity(request);
-        User saved = authService.register(user);
-        return ResponseEntity.ok(userMapper.toDto(saved));
+        var saved = authService.register(request);
+        return ResponseEntity
+                .created(URI.create("/users/" + saved.getId()))
+                .body(userMapper.toDto(saved));
     }
 
     @PostMapping("/login")

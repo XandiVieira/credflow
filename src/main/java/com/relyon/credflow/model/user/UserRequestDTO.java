@@ -17,5 +17,5 @@ public class UserRequestDTO {
     @NotBlank(message = "Password is required")
     private String password;
 
-    private Long accountId;
+    private String inviteCode;
 }
