@@ -116,4 +116,9 @@ public class CategoryService {
         repository.delete(category);
         log.info("Category ID {} deleted", id);
     }
+
+    public List<Category> findAllByAccount(Long accountId) {
+        log.info("Fetching all categories for account {}", accountId);
+        return repository.findAllByAccountId(accountId);
+    }
 }

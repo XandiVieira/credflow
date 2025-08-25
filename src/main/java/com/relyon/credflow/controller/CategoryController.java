@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/v1/categories")
 @RequiredArgsConstructor
@@ -28,8 +30,8 @@ public class CategoryController {
             @AuthenticationPrincipal AuthenticatedUser user) {
 
         log.info("POST create category '{}' for account {}", dto.getName(), user.getAccountId());
-        Category entity = mapper.toEntity(dto);                 // ID stubs only
-        Category saved = service.create(entity, user.getAccountId()); // service resolves & validates
+        Category entity = mapper.toEntity(dto);
+        Category saved = service.create(entity, user.getAccountId());
         return ResponseEntity.ok(mapper.toDto(saved));
     }
 
@@ -41,6 +43,16 @@ public class CategoryController {
         log.info("GET category ID {} for account {}", id, user.getAccountId());
         var category = service.findById(id, user.getAccountId());
         return ResponseEntity.ok(mapper.toDto(category));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<CategoryResponseDTO>> getAllByAccount(
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        log.info("GET all categories for account {}", user.getAccountId());
+        var categories = service.findAllByAccount(user.getAccountId());
+        var response = categories.stream().map(mapper::toDto).toList();
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")

@@ -56,8 +56,8 @@ public class TransactionController {
     public ResponseEntity<List<TransactionResponseDTO>> findFiltered(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) String descriptionLike,
-            @RequestParam(required = false) String simplifiedLike,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String simplified,
             @RequestParam(required = false) BigDecimal minValue,
             @RequestParam(required = false) BigDecimal maxValue,
             @RequestParam(required = false) List<Long> responsibleIds,
@@ -74,13 +74,13 @@ public class TransactionController {
 
         log.info("GET /v1/transactions for account {}, filters: start={}, end={}, descLike='{}', "
                         + "simpLike='{}', min={}, max={}, responsibles={}, categories={}, sort={}",
-                user.getAccountId(), startDate, endDate, descriptionLike, simplifiedLike,
+                user.getAccountId(), startDate, endDate, description, simplified,
                 minValue, maxValue, responsibleIds, categoryIds, effectiveSort);
 
         var result = transactionService.findByFilters(
                 user.getAccountId(),
                 startDate, endDate,
-                descriptionLike, simplifiedLike,
+                description, simplified,
                 minValue, maxValue,
                 responsibleIds, categoryIds,
                 sort
