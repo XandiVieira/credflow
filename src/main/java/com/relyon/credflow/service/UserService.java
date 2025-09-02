@@ -1,11 +1,13 @@
 package com.relyon.credflow.service;
 
+import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,10 +39,14 @@ public class UserService {
             user.setAccount(accountService.createDefaultFor(user));
         }
 
-        User saved = userRepository.save(user);
-        log.info("User created with ID {} and account ID {}", saved.getId(), saved.getAccount().getId());
-
-        return saved;
+        try {
+            User saved = userRepository.save(user);
+            log.info("User created with ID {} and account ID {}", saved.getId(), saved.getAccount().getId());
+            return saved;
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("Email {} already exists", dto.getEmail());
+            throw new ResourceAlreadyExistsException("Email already exists: " + dto.getEmail());
+        }
     }
 
     public List<User> findAll() {

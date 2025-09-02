@@ -6,9 +6,20 @@ spring:
     properties:
       hibernate.format_sql: true
       hibernate.jdbc.time_zone: UTC
+  mvc:
+    locale: pt_BR
+    locale-resolver: fixed
+  messages:
+    basename: ValidationMessages
+    encoding: UTF-8
 
 server:
-  servlet.context-path: /credflow/api
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+    context-path: /credflow/api
   port: ${PORT:8080}
   forward-headers-strategy: native
   compression.enabled: true

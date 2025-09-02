@@ -1,9 +1,14 @@
 package com.relyon.credflow.exception;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -11,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -22,9 +28,44 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND));
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        List<String> errors = ex.getConstraintViolations()
+                .stream()
+                .map(ConstraintViolation::getMessage)
+                .toList();
+
+        return ResponseEntity
+                .badRequest()
+                .body(Map.of("status", 400, "errors", errors));
+    }
+
+    @ExceptionHandler({ BadCredentialsException.class, UsernameNotFoundException.class })
+    public ResponseEntity<Map<String, Object>> handleAuthExceptions(Exception ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(buildErrorResponse("Usuário inexistente ou senha inválida", HttpStatus.UNAUTHORIZED));
+    }
+
     @ExceptionHandler(ResourceAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handleAlreadyExists(ResourceAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT));
+    public ResponseEntity<Map<String, Object>> handleDuplicate(ResourceAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage(), "status", 409));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationError(MethodArgumentNotValidException ex) {
+        var fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage).toList();
+
+        var globalErrors = ex.getBindingResult().getGlobalErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage).toList();
+
+        var errors = new java.util.ArrayList<String>(fieldErrors.size() + globalErrors.size());
+        errors.addAll(fieldErrors);
+        errors.addAll(globalErrors);
+
+        return ResponseEntity.badRequest().body(Map.of("status", 400, "errors", errors));
     }
 
     @ExceptionHandler(CsvProcessingException.class)
@@ -36,7 +77,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler({ PropertyReferenceException.class, InvalidDataAccessApiUsageException.class })
+    @ExceptionHandler({PropertyReferenceException.class, InvalidDataAccessApiUsageException.class})
     public ResponseEntity<Map<String, Object>> handleInvalidSort(RuntimeException ex) {
         String message;
         if (ex instanceof PropertyReferenceException pre) {
@@ -50,16 +91,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST));
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException ex) {
-        var errorMessages = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.joining("; "));
-        return ResponseEntity.badRequest().body(buildErrorResponse(errorMessages, HttpStatus.BAD_REQUEST));
     }
 
     @ExceptionHandler(BindException.class)

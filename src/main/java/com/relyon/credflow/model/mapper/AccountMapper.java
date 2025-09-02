@@ -25,6 +25,7 @@ public interface AccountMapper {
     @Mapping(target = "users", ignore = true)
     @Mapping(target = "descriptionMappings", ignore = true)
     @Mapping(target = "transactions", ignore = true)
+    @Mapping(target = "inviteCode", ignore = true)
     Account toEntity(AccountRequestDTO dto);
 
     @Named("usersToIds")
