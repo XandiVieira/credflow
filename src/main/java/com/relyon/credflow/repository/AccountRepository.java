@@ -9,8 +9,14 @@ import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
 
+    @Override
+    @EntityGraph(attributePaths = "users")
+    Optional<Account> findById(Long id);
+
+    @Override
     @EntityGraph(attributePaths = "users")
     List<Account> findAll();
 
+    @EntityGraph(attributePaths = "users")
     Optional<Account> findByInviteCode(String code);
 }

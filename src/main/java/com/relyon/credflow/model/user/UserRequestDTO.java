@@ -7,21 +7,21 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-@PasswordMatches
+@PasswordMatches(message = "Passwords do not match")
 public class UserRequestDTO {
 
-    @NotBlank(message = "{user.name.required}")
+    @NotBlank(message = "Name is required")
     private String name;
 
-    @Email(message = "{user.email.invalid}")
-    @NotBlank(message = "{user.email.required}")
+    @Email(message = "Invalid email")
+    @NotBlank(message = "Email is required")
     private String email;
 
-    @NotBlank(message = "{user.password.required}")
+    @NotBlank(message = "Password is required")
     @StrongPassword
     private String password;
 
-    @NotBlank(message = "{user.confirm.required}")
+    @NotBlank(message = "Password confirmation is required")
     private String confirmPassword;
 
     private String inviteCode;

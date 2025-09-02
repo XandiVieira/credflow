@@ -17,7 +17,7 @@ COPY src ./src
 RUN ./mvnw -B -DskipTests clean package
 
 # ---------- Run ----------
-FROM amazoncorretto:21-alpine
+FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
 
 # Non-root user
@@ -29,5 +29,5 @@ USER app
 
 # Runtime
 ENV JAVA_OPTS="-Xms256m -Xmx512m -Djava.security.egd=file:/dev/./urandom"
-EXPOSE 10000
+EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

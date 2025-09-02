@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:credflow_it;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driverClassName: org.h2.Driver
+    username: sa
+    password: sa
+  jpa:
+    open-in-view: true
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate.format_sql: true
+      hibernate.jdbc.time_zone: UTC
+  mvc:
+    locale: pt_BR
+    locale-resolver: fixed
+  messages:
+    basename: ValidationMessages
+    encoding: UTF-8
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  port: 0
+  forward-headers-strategy: native
+jwt:
+  secret: this-is-a-very-long-test-secret-key-32bytes-minimum!!
+  expiration: 3600000
