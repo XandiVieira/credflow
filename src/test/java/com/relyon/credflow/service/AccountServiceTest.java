@@ -135,7 +135,6 @@ class AccountServiceTest {
         var saved = new Account();
         saved.setName("New");
         saved.setDescription("To create");
-        // emulate persistence assigning an ID
         saved.setId(1L);
 
         when(accountRepository.save(same(input))).thenReturn(saved);

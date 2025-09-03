@@ -27,12 +27,12 @@ public class DescriptionMappingController {
     @PostMapping
     public ResponseEntity<List<DescriptionMappingResponseDTO>> create(
             @AuthenticationPrincipal AuthenticatedUser user,
-            @Valid @RequestBody List<DescriptionMappingRequestDTO> requestDTOs
+            @RequestBody List<@Valid DescriptionMappingRequestDTO> requestDTOs
     ) {
         log.info("POST to create {} mappings for account {}", requestDTOs.size(), user.getAccountId());
 
         List<DescriptionMapping> entities = requestDTOs.stream()
-                .map(mapper::toEntity) // categoryId -> Category stub inside mapper
+                .map(mapper::toEntity)
                 .toList();
 
         var created = service.createAll(entities, user.getAccountId());
@@ -93,7 +93,7 @@ public class DescriptionMappingController {
     ) {
         log.info("PUT update mapping ID {} for account {}", id, user.getAccountId());
 
-        DescriptionMapping patch = mapper.toEntity(dto); // categoryId -> Category stub
+        DescriptionMapping patch = mapper.toEntity(dto);
         var saved = service.update(id, patch, user.getAccountId());
 
         return ResponseEntity.ok(mapper.toDto(saved));

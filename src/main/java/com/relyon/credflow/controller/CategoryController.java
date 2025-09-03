@@ -62,7 +62,7 @@ public class CategoryController {
             @Valid @RequestBody CategoryRequestDTO dto) {
 
         log.info("PUT update category ID {} for account {}", id, user.getAccountId());
-        Category patch = mapper.toEntity(dto);                       // ID stubs only
+        Category patch = mapper.toEntity(dto);
         Category updated = service.update(id, patch, user.getAccountId());
         return ResponseEntity.ok(mapper.toDto(updated));
     }

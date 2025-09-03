@@ -63,7 +63,7 @@ public class CategoryService {
 
         var users = new java.util.LinkedHashSet<User>();
         for (Long id : ids) {
-            var u = userService.findById(id); // throws if not found
+            var u = userService.findById(id);
             if (!u.getAccount().getId().equals(accountId)) {
                 throw new IllegalArgumentException(
                         "User " + id + " does not belong to this account."

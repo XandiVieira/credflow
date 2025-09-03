@@ -109,7 +109,7 @@ public class TransactionController {
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         log.info("PUT /v1/transactions/{} for account {}", id, user.getAccountId());
-        Transaction patch = mapper.toEntity(dto); // category stub; account comes from path principal
+        Transaction patch = mapper.toEntity(dto);
         var updated = transactionService.update(id, patch, user.getAccountId());
         return ResponseEntity.ok(mapper.toDto(updated));
     }

@@ -10,6 +10,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -25,14 +26,19 @@ public interface TransactionMapper {
     @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "idsToUsers")
     Transaction toEntity(TransactionRequestDTO dto);
 
-    @Mapping(target = "category", source = "category.name")
-    @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "usersToIds")
     @Mapping(target = "accountId", source = "account.id")
+    @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "usersToIds")
+    @Mapping(target = "category", source = "category", qualifiedByName = "categoryToName")
     TransactionResponseDTO toDto(Transaction entity);
+
+    @Named("categoryToName")
+    default String categoryToName(Category c) {
+        return (c == null) ? null : c.getName();
+    }
 
     @Named("usersToIds")
     default List<Long> usersToIds(Set<User> users) {
-        if (users == null || users.isEmpty()) return java.util.Collections.emptyList();
+        if (users == null || users.isEmpty()) return List.of();
         return users.stream().map(User::getId).toList();
     }
 
@@ -46,8 +52,8 @@ public interface TransactionMapper {
 
     @Named("idsToUsers")
     default Set<User> idsToUsers(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) return java.util.Collections.emptySet();
-        var out = new java.util.LinkedHashSet<User>();
+        if (ids == null || ids.isEmpty()) return Set.of();
+        var out = new LinkedHashSet<User>(ids.size());
         for (Long id : ids) {
             if (id == null) continue;
             var u = new User();
@@ -55,11 +61,5 @@ public interface TransactionMapper {
             out.add(u);
         }
         return out;
-    }
-
-    @Named("usersToNames")
-    default List<String> usersToNames(Set<User> users) {
-        if (users == null || users.isEmpty()) return java.util.Collections.emptyList();
-        return users.stream().map(User::getName).toList();
     }
 }

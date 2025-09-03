@@ -225,7 +225,7 @@ class TransactionServiceTest {
         verify(repository).search(
                 eq(accountId),
                 eq("%zaf%"),
-                isNull(), // simplified
+                isNull(),
                 isNull(), isNull(),
                 isNull(), isNull(),
                 isNull(), isNull(),

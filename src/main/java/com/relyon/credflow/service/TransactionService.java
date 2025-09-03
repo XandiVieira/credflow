@@ -37,10 +37,9 @@ public class TransactionService {
     private final DescriptionMappingRepository mappingRepository;
     private final AccountService accountService;
     private final UserService userService;
+    private final CategoryService categoryService;
 
     private final DateTimeFormatter banrisulCsvDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    // ---------- CSV import ----------
 
     public List<Transaction> importFromBanrisulCSV(MultipartFile file, Long accountId) {
         var account = accountService.findById(accountId);
@@ -108,7 +107,7 @@ public class TransactionService {
                     mapping.getSimplifiedDescription(),
                     mapping.getCategory() != null ? mapping.getCategory() : new Category("Não Identificado", account),
                     value,
-                    null // responsibles will be empty on CSV
+                    null
             );
             tx.setChecksum(DigestUtils.sha256Hex(line.trim()));
             tx.setAccount(account);
@@ -125,11 +124,15 @@ public class TransactionService {
                 .collect(Collectors.toMap(DescriptionMapping::getNormalizedDescription, Function.identity()));
     }
 
-    // ---------- CRUD ----------
 
     @Transactional
     public Transaction create(Transaction tx, Long accountId) {
         tx.setAccount(accountService.findById(accountId));
+
+        if (tx.getCategory() != null && tx.getCategory().getId() != null) {
+            tx.setCategory(categoryService.findById(tx.getCategory().getId(), accountId));
+        }
+
         tx.setResponsibles(resolveResponsiblesForAccount(tx.getResponsibles(), accountId));
         saveMappingIfNotExists(tx.getDescription(), tx.getSimplifiedDescription(), tx.getCategory(), tx.getAccount());
         return repository.save(tx);
@@ -152,6 +155,7 @@ public class TransactionService {
         return new LinkedHashSet<>(found);
     }
 
+    @Transactional
     public Transaction update(Long id, Transaction updated, Long accountId) {
         log.info("Updating transaction ID {}: {}", id, updated);
 
@@ -159,22 +163,25 @@ public class TransactionService {
             existing.setDate(updated.getDate());
             existing.setDescription(updated.getDescription());
             existing.setSimplifiedDescription(updated.getSimplifiedDescription());
-            existing.setCategory(updated.getCategory());
+
+            if (updated.getCategory() != null && updated.getCategory().getId() != null) {
+                existing.setCategory(categoryService.findById(updated.getCategory().getId(), accountId));
+            } else {
+                existing.setCategory(null);
+            }
+
             existing.setValue(updated.getValue());
             existing.setResponsibles(resolveResponsiblesForAccount(updated.getResponsibles(), accountId));
 
             saveMappingIfNotExists(
-                    updated.getDescription(), updated.getSimplifiedDescription(),
-                    updated.getCategory(), accountService.findById(accountId)
+                    updated.getDescription(),
+                    updated.getSimplifiedDescription(),
+                    existing.getCategory(),
+                    accountService.findById(accountId)
             );
             return repository.save(existing);
-        }).orElseThrow(() -> {
-            log.warn("Transaction with ID {} not found for update", id);
-            return new ResourceNotFoundException("Transaction not found with ID " + id);
-        });
+        }).orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
     }
-
-    // ---------- Search / filter ----------
 
     public List<Transaction> findByFilters(
             Long accountId,
@@ -196,7 +203,7 @@ public class TransactionService {
                 : sort;
 
         var respIds = (responsibleUserIds == null || responsibleUserIds.isEmpty()) ? null : responsibleUserIds;
-        var catIds  = (categoryIds == null || categoryIds.isEmpty()) ? null : categoryIds;
+        var catIds = (categoryIds == null || categoryIds.isEmpty()) ? null : categoryIds;
 
         log.info("Querying transactions: from={}, to={}, desc~'{}', simp~'{}', min={}, max={}, respIds={}, catIds={}, sort={}",
                 fromDate, toDate, descPattern, simpPattern, minAmount, maxAmount, respIds, catIds, safeSort);
@@ -233,8 +240,6 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
         repository.delete(tx);
     }
-
-    // ---------- Mapping helper ----------
 
     private void saveMappingIfNotExists(String description, String simplified, Category category, Account account) {
         var normalized = NormalizationUtils.normalizeDescription(description);

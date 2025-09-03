@@ -5,6 +5,7 @@ import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.account.AccountRequestDTO;
 import com.relyon.credflow.model.account.AccountResponseDTO;
 import com.relyon.credflow.model.user.User;
+import org.hibernate.Hibernate;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -31,6 +32,11 @@ public interface AccountMapper {
     @Named("usersToIds")
     default List<Long> usersToIds(Collection<User> users) {
         if (users == null) return List.of();
-        return users.stream().map(User::getId).filter(Objects::nonNull).toList();
+        if (!Hibernate.isInitialized(users)) return List.of();
+        return users.stream()
+                .filter(Objects::nonNull)
+                .map(User::getId)
+                .filter(Objects::nonNull)
+                .toList();
     }
 }

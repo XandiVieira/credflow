@@ -45,7 +45,7 @@ public class Transaction extends BaseEntity {
             name = "transaction_responsibles",
             joinColumns = @JoinColumn(name = "transaction_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"),
-            uniqueConstraints = @UniqueConstraint(columnNames = {"transaction_id","user_id"})
+            uniqueConstraints = @UniqueConstraint(columnNames = {"transaction_id", "user_id"})
     )
     private Set<User> responsibles = new HashSet<>();
     @Column(name = "checksum", unique = true)
