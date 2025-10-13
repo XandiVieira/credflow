@@ -1,6 +1,5 @@
 package com.relyon.credflow.service;
 
-import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.repository.CreditCardRepository;
 import lombok.RequiredArgsConstructor;
