@@ -19,4 +19,14 @@ public class CreditCardService {
         log.info("Fetching all credit cards for account {}", accountId);
         return creditCardRepository.findAllByAccountId(accountId);
     }
+
+    public CreditCard findById(Long id) {
+        log.info("Fetching credit card with id {}", id);
+        return creditCardRepository.findById(id).orElse(null);
+    }
+
+    public CreditCard create(CreditCard creditCard, Long accountId) {
+        log.info("Creating credit card");
+        return creditCardRepository.save(creditCard);
+    }
 }
