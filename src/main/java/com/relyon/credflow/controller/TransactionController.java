@@ -28,7 +28,7 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final TransactionMapper mapper;
+    private final TransactionMapper transactionMapper;
 
     @PostMapping("/import/csv/banrisul")
     public ResponseEntity<List<TransactionResponseDTO>> importBanrisulCSV(
@@ -37,7 +37,7 @@ public class TransactionController {
     ) {
         log.info("POST /import/csv/banrisul for account {}", user.getAccountId());
         var transactions = transactionService.importFromBanrisulCSV(file, user.getAccountId());
-        var response = transactions.stream().map(mapper::toDto).toList();
+        var response = transactions.stream().map(transactionMapper::toDto).toList();
         return ResponseEntity.ok(response);
     }
 
@@ -47,9 +47,9 @@ public class TransactionController {
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         log.info("POST /v1/transactions to create transaction for account {}", user.getAccountId());
-        var transaction = mapper.toEntity(dto);
+        var transaction = transactionMapper.toEntity(dto);
         var created = transactionService.create(transaction, user.getAccountId());
-        return ResponseEntity.ok(mapper.toDto(created));
+        return ResponseEntity.ok(transactionMapper.toDto(created));
     }
 
     @GetMapping
@@ -84,7 +84,7 @@ public class TransactionController {
                 minValue, maxValue,
                 responsibleIds, categoryIds,
                 sort
-        ).stream().map(mapper::toDto).toList();
+        ).stream().map(transactionMapper::toDto).toList();
 
 
         return ResponseEntity.ok(result);
@@ -97,7 +97,7 @@ public class TransactionController {
     ) {
         log.info("GET /v1/transactions/{} for account {}", id, user.getAccountId());
         return transactionService.findById(id, user.getAccountId())
-                .map(mapper::toDto)
+                .map(transactionMapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -109,9 +109,9 @@ public class TransactionController {
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
         log.info("PUT /v1/transactions/{} for account {}", id, user.getAccountId());
-        Transaction patch = mapper.toEntity(dto);
+        Transaction patch = transactionMapper.toEntity(dto);
         var updated = transactionService.update(id, patch, user.getAccountId());
-        return ResponseEntity.ok(mapper.toDto(updated));
+        return ResponseEntity.ok(transactionMapper.toDto(updated));
     }
 
     @DeleteMapping("/{id}")

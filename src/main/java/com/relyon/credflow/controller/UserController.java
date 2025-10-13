@@ -20,13 +20,13 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    private final UserMapper mapper;
+    private final UserMapper userMapper;
 
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         log.info("GET request to fetch all users");
         var users = userService.findAll().stream()
-                .map(mapper::toDto)
+                .map(userMapper::toDto)
                 .toList();
         log.info("Returning {} users", users.size());
         return ResponseEntity.ok(users);
@@ -36,7 +36,7 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> findById(@PathVariable Long id) {
         log.info("GET request to fetch user with ID {}", id);
         var user = userService.findById(id);
-        var response = mapper.toDto(user);
+        var response = userMapper.toDto(user);
         return ResponseEntity.ok(response);
     }
 
@@ -46,9 +46,9 @@ public class UserController {
             @Valid @RequestBody UserRequestDTO dto
     ) {
         log.info("PUT request to update user with ID {}", id);
-        User patch = mapper.toEntity(dto);
+        User patch = userMapper.toEntity(dto);
         var saved = userService.update(id, patch);
-        var response = mapper.toDto(saved);
+        var response = userMapper.toDto(saved);
         log.info("User with ID {} successfully updated", id);
         return ResponseEntity.ok(response);
     }
