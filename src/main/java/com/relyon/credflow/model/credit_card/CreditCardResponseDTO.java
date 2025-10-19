@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 public class CreditCardResponseDTO {
 
     private Long id;
+    private Long account;
     private String nickname;
     private String brand;
     private String tier;
@@ -18,6 +19,5 @@ public class CreditCardResponseDTO {
     private Integer dueDay;
     private BigDecimal creditLimit;
     private BigDecimal availableCreditLimit;
-    private Long accountId;
 
 }

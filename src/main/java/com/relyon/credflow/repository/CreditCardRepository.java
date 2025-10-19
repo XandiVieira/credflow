@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface CreditCardRepository extends JpaRepository<CreditCard, Long> {
 
-    @EntityGraph(attributePaths = "defaultResponsibles")
+    @EntityGraph(attributePaths = "account")
     List<CreditCard> findAllByAccountId(Long accountId);
 }

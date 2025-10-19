@@ -24,7 +24,6 @@ import java.util.List;
 public class CreditCardController {
 
     private final CreditCardService creditCardService;
-    private final CreditCardMapper creditCardMapper;
 
     @GetMapping
     public ResponseEntity<List<CreditCardResponseDTO>> getAllByAccountId(
@@ -36,12 +35,13 @@ public class CreditCardController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping
+    @GetMapping("/{id}")
     public ResponseEntity<CreditCardResponseDTO> getCreditCardById(
+            @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        log.info("GET credit card ID: {}", user.getAccountId());
-        var creditCard = creditCardService.findById(user.getAccountId());
+        log.info("GET credit card ID: {}", id);
+        var creditCard = creditCardService.findById(id);
         var response = creditCardMapper.toDTO(creditCard);
         return ResponseEntity.ok(response);
     }
