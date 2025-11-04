@@ -2,6 +2,7 @@ package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.TransactionMapper;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.model.transaction.TransactionRequestDTO;
 import com.relyon.credflow.model.transaction.TransactionResponseDTO;
 import com.relyon.credflow.model.user.AuthenticatedUser;
@@ -52,41 +53,13 @@ public class TransactionController {
         return ResponseEntity.ok(mapper.toDto(created));
     }
 
-    @GetMapping
+    @PostMapping("/search")
     public ResponseEntity<List<TransactionResponseDTO>> findFiltered(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) String description,
-            @RequestParam(required = false) String simplified,
-            @RequestParam(required = false) BigDecimal minValue,
-            @RequestParam(required = false) BigDecimal maxValue,
-            @RequestParam(required = false) List<Long> responsibleIds,
-            @RequestParam(required = false) List<Long> categoryIds,
+            @RequestBody(required = false) TransactionFilter transactionFilter,
             @ParameterObject Sort sort,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        responsibleIds = (responsibleIds == null || responsibleIds.isEmpty()) ? null : responsibleIds;
-        categoryIds = (categoryIds == null || categoryIds.isEmpty()) ? null : categoryIds;
-
-        var effectiveSort = (sort == null || sort.isUnsorted())
-                ? Sort.by(Sort.Order.desc("date"))
-                : sort;
-
-        log.info("GET /v1/transactions for account {}, filters: start={}, end={}, descLike='{}', "
-                        + "simpLike='{}', min={}, max={}, responsibles={}, categories={}, sort={}",
-                user.getAccountId(), startDate, endDate, description, simplified,
-                minValue, maxValue, responsibleIds, categoryIds, effectiveSort);
-
-        var result = transactionService.findByFilters(
-                user.getAccountId(),
-                startDate, endDate,
-                description, simplified,
-                minValue, maxValue,
-                responsibleIds, categoryIds,
-                sort
-        ).stream().map(mapper::toDto).toList();
-
-
+        var result = transactionService.search(transactionFilter, sort).stream().map(mapper::toDto).toList();
         return ResponseEntity.ok(result);
     }
 

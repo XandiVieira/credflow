@@ -6,9 +6,13 @@ import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
+import com.relyon.credflow.specification.Sorts;
+import com.relyon.credflow.specification.TransactionFilterNormalizer;
+import com.relyon.credflow.specification.TransactionSpecFactory;
 import com.relyon.credflow.utils.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -183,50 +187,11 @@ public class TransactionService {
         }).orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
     }
 
-    public List<Transaction> findByFilters(
-            Long accountId,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String descriptionContains,
-            String simplifiedContains,
-            BigDecimal minAmount,
-            BigDecimal maxAmount,
-            List<Long> responsibleUserIds,
-            List<Long> categoryIds,
-            Sort sort
-    ) {
-        var descPattern = toLikePattern(descriptionContains);
-        var simpPattern = toLikePattern(simplifiedContains);
-
-        var safeSort = (sort == null || sort.isUnsorted())
-                ? Sort.by(Sort.Order.desc("date"))
-                : sort;
-
-        var respIds = (responsibleUserIds == null || responsibleUserIds.isEmpty()) ? null : responsibleUserIds;
-        var catIds = (categoryIds == null || categoryIds.isEmpty()) ? null : categoryIds;
-
-        log.info("Querying transactions: from={}, to={}, desc~'{}', simp~'{}', min={}, max={}, respIds={}, catIds={}, sort={}",
-                fromDate, toDate, descPattern, simpPattern, minAmount, maxAmount, respIds, catIds, safeSort);
-
-        return repository.search(
-                accountId,
-                descPattern,
-                simpPattern,
-                fromDate,
-                toDate,
-                minAmount,
-                maxAmount,
-                respIds,
-                catIds,
-                safeSort
-        );
-    }
-
-    private static String toLikePattern(String s) {
-        if (s == null) return null;
-        var trimmed = s.trim();
-        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("null")) return null;
-        return "%" + trimmed.toLowerCase(Locale.ROOT) + "%";
+    public List<Transaction> search(TransactionFilter filter, Sort sort) {
+        var normalized = TransactionFilterNormalizer.normalize(filter);
+        var spec = TransactionSpecFactory.from(normalized);
+        var safeSort = Sorts.resolve(sort);
+        return repository.findAll(spec, safeSort);
     }
 
     public Optional<Transaction> findById(Long id, Long accountId) {
