@@ -22,7 +22,7 @@ import java.util.List;
 public class DescriptionMappingController {
 
     private final DescriptionMappingService service;
-    private final DescriptionMappingMapper mapper;
+    private final DescriptionMappingMapper descriptionMappingMapper;
 
     @PostMapping
     public ResponseEntity<List<DescriptionMappingResponseDTO>> create(
@@ -32,13 +32,13 @@ public class DescriptionMappingController {
         log.info("POST to create {} mappings for account {}", requestDTOs.size(), user.getAccountId());
 
         List<DescriptionMapping> entities = requestDTOs.stream()
-                .map(mapper::toEntity)
+                .map(descriptionMappingMapper::toEntity)
                 .toList();
 
         var created = service.createAll(entities, user.getAccountId());
 
         var response = created.stream()
-                .map(mapper::toDto)
+                .map(descriptionMappingMapper::toDto)
                 .toList();
 
         return ResponseEntity.ok(response);
@@ -53,7 +53,7 @@ public class DescriptionMappingController {
                 user.getAccountId(), onlyIncomplete);
 
         var result = service.findAll(user.getAccountId(), onlyIncomplete).stream()
-                .map(mapper::toDto)
+                .map(descriptionMappingMapper::toDto)
                 .toList();
 
         return ResponseEntity.ok(result);
@@ -67,7 +67,7 @@ public class DescriptionMappingController {
         log.info("GET mapping by ID {} for account {}", id, user.getAccountId());
 
         return service.findById(id, user.getAccountId())
-                .map(mapper::toDto)
+                .map(descriptionMappingMapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -80,7 +80,7 @@ public class DescriptionMappingController {
         log.info("GET mapping by original description '{}' for account {}", originalDescription, user.getAccountId());
 
         return service.findByNormalizedDescription(originalDescription, user.getAccountId())
-                .map(mapper::toDto)
+                .map(descriptionMappingMapper::toDto)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -93,10 +93,10 @@ public class DescriptionMappingController {
     ) {
         log.info("PUT update mapping ID {} for account {}", id, user.getAccountId());
 
-        DescriptionMapping patch = mapper.toEntity(dto);
+        DescriptionMapping patch = descriptionMappingMapper.toEntity(dto);
         var saved = service.update(id, patch, user.getAccountId());
 
-        return ResponseEntity.ok(mapper.toDto(saved));
+        return ResponseEntity.ok(descriptionMappingMapper.toDto(saved));
     }
 
     @DeleteMapping("/{id}")

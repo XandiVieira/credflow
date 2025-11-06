@@ -3,6 +3,7 @@ package com.relyon.credflow.model.transaction;
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
+import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -52,4 +53,7 @@ public class Transaction extends BaseEntity {
     private String checksum;
     @ManyToOne(optional = false)
     private Account account;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "credit_card_id")
+    private CreditCard creditCard;
 }

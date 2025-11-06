@@ -22,7 +22,7 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService service;
-    private final CategoryMapper mapper;
+    private final CategoryMapper categoryMapper;
 
     @PostMapping
     public ResponseEntity<CategoryResponseDTO> create(
@@ -30,9 +30,9 @@ public class CategoryController {
             @AuthenticationPrincipal AuthenticatedUser user) {
 
         log.info("POST create category '{}' for account {}", dto.getName(), user.getAccountId());
-        Category entity = mapper.toEntity(dto);
+        Category entity = categoryMapper.toEntity(dto);
         Category saved = service.create(entity, user.getAccountId());
-        return ResponseEntity.ok(mapper.toDto(saved));
+        return ResponseEntity.ok(categoryMapper.toDto(saved));
     }
 
     @GetMapping("/{id}")
@@ -42,7 +42,7 @@ public class CategoryController {
 
         log.info("GET category ID {} for account {}", id, user.getAccountId());
         var category = service.findById(id, user.getAccountId());
-        return ResponseEntity.ok(mapper.toDto(category));
+        return ResponseEntity.ok(categoryMapper.toDto(category));
     }
 
     @GetMapping
@@ -51,7 +51,7 @@ public class CategoryController {
 
         log.info("GET all categories for account {}", user.getAccountId());
         var categories = service.findAllByAccount(user.getAccountId());
-        var response = categories.stream().map(mapper::toDto).toList();
+        var response = categories.stream().map(categoryMapper::toDto).toList();
         return ResponseEntity.ok(response);
     }
 
@@ -62,9 +62,9 @@ public class CategoryController {
             @Valid @RequestBody CategoryRequestDTO dto) {
 
         log.info("PUT update category ID {} for account {}", id, user.getAccountId());
-        Category patch = mapper.toEntity(dto);
+        Category patch = categoryMapper.toEntity(dto);
         Category updated = service.update(id, patch, user.getAccountId());
-        return ResponseEntity.ok(mapper.toDto(updated));
+        return ResponseEntity.ok(categoryMapper.toDto(updated));
     }
 
     @DeleteMapping("/{id}")

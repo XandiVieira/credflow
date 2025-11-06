@@ -10,4 +10,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByAccountId(Long accountId);
 
     Optional<User> findByEmail(String email);
+
+    Optional<User> findByIdAndAccountId(Long id, Long accountId);
 }

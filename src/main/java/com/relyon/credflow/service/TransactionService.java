@@ -4,10 +4,12 @@ import com.relyon.credflow.exception.CsvProcessingException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
+import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.specification.Sorts;
@@ -42,6 +44,7 @@ public class TransactionService {
     private final AccountService accountService;
     private final UserService userService;
     private final CategoryService categoryService;
+    private final CreditCardRepository creditCardRepository;
 
     private final DateTimeFormatter banrisulCsvDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -137,6 +140,12 @@ public class TransactionService {
             tx.setCategory(categoryService.findById(tx.getCategory().getId(), accountId));
         }
 
+        if (tx.getCreditCard() != null && tx.getCreditCard().getId() != null) {
+            CreditCard creditCard = creditCardRepository.findByIdAndAccountId(tx.getCreditCard().getId(), accountId)
+                    .orElseThrow(() -> new IllegalArgumentException("Credit card not found or does not belong to this account"));
+            tx.setCreditCard(creditCard);
+        }
+
         tx.setResponsibles(resolveResponsiblesForAccount(tx.getResponsibles(), accountId));
         saveMappingIfNotExists(tx.getDescription(), tx.getSimplifiedDescription(), tx.getCategory(), tx.getAccount());
         return repository.save(tx);
@@ -172,6 +181,14 @@ public class TransactionService {
                 existing.setCategory(categoryService.findById(updated.getCategory().getId(), accountId));
             } else {
                 existing.setCategory(null);
+            }
+
+            if (updated.getCreditCard() != null && updated.getCreditCard().getId() != null) {
+                CreditCard creditCard = creditCardRepository.findByIdAndAccountId(updated.getCreditCard().getId(), accountId)
+                        .orElseThrow(() -> new IllegalArgumentException("Credit card not found or does not belong to this account"));
+                existing.setCreditCard(creditCard);
+            } else {
+                existing.setCreditCard(null);
             }
 
             existing.setValue(updated.getValue());
