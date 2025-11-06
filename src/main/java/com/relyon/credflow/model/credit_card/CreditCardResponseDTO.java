@@ -3,6 +3,8 @@ package com.relyon.credflow.model.credit_card;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 
 
 @Data
@@ -20,12 +22,21 @@ public class CreditCardResponseDTO {
     private Integer dueDay;
     private BigDecimal creditLimit;
     private BigDecimal availableCreditLimit;
+    private CurrentBillDTO currentBill;
 
     @Data
     public static class HolderDTO {
         private Long id;
         private String name;
         private String email;
+    }
+
+    @Data
+    public static class CurrentBillDTO {
+        private LocalDate cycleStartDate;
+        private LocalDate cycleClosingDate;
+        private LocalDate dueDate;
+        private BigDecimal totalAmount;
     }
 
 }

@@ -16,6 +16,7 @@ public interface CreditCardMapper {
     @Mapping(target = "holder.name", source = "holder.name")
     @Mapping(target = "holder.email", source = "holder.email")
     @Mapping(target = "availableCreditLimit", ignore = true)
+    @Mapping(target = "currentBill", ignore = true)
     CreditCardResponseDTO toDTO(CreditCard entity);
 
     @Mapping(target = "id", ignore = true)
