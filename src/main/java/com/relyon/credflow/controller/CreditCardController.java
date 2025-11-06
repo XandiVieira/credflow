@@ -1,7 +1,5 @@
 package com.relyon.credflow.controller;
 
-import com.relyon.credflow.model.category.Category;
-import com.relyon.credflow.model.category.CategoryRequestDTO;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardRequestDTO;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
@@ -24,6 +22,7 @@ import java.util.List;
 public class CreditCardController {
 
     private final CreditCardService creditCardService;
+    private final CreditCardMapper creditCardMapper;
 
     @GetMapping
     public ResponseEntity<List<CreditCardResponseDTO>> getAllByAccountId(
@@ -31,8 +30,7 @@ public class CreditCardController {
 
         log.info("GET all credit cards for account {}", user.getAccountId());
         var creditCards = creditCardService.findAll(user.getAccountId());
-        var response = creditCards.stream().map(creditCardMapper::toDTO).toList();
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(creditCards);
     }
 
     @GetMapping("/{id}")
@@ -42,8 +40,7 @@ public class CreditCardController {
 
         log.info("GET credit card ID: {}", id);
         var creditCard = creditCardService.findById(id);
-        var response = creditCardMapper.toDTO(creditCard);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(creditCard);
     }
 
     @PostMapping
