@@ -17,9 +17,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findByAccountIdAndDescriptionIgnoreCase(Long accountId, String originalDescription);
 
+    @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
     Optional<Transaction> findByIdAndAccountId(Long id, Long accountId);
 
-    @EntityGraph(attributePaths = {"responsibles", "category"})
+    @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
     @Query("""
             select distinct t
               from Transaction t

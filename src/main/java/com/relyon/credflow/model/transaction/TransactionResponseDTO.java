@@ -16,4 +16,13 @@ public class TransactionResponseDTO {
     private BigDecimal value;
     private Long accountId;
     private List<Long> responsibles;
+    private CreditCardDTO creditCard;
+
+    @Data
+    public static class CreditCardDTO {
+        private Long id;
+        private String nickname;
+        private String brand;
+        private String lastFourDigits;
+    }
 }

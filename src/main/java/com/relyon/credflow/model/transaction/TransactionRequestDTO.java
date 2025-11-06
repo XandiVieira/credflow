@@ -27,4 +27,6 @@ public class TransactionRequestDTO {
     private BigDecimal value;
 
     private List<Long> responsibles;
+
+    private Long creditCardId;
 }
