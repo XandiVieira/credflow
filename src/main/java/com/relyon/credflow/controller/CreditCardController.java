@@ -38,8 +38,8 @@ public class CreditCardController {
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        log.info("GET credit card ID: {}", id);
-        var creditCard = creditCardService.findById(id);
+        log.info("GET credit card ID: {} for account {}", id, user.getAccountId());
+        var creditCard = creditCardService.findById(id, user.getAccountId());
         return ResponseEntity.ok(creditCard);
     }
 
@@ -47,9 +47,9 @@ public class CreditCardController {
     public ResponseEntity<CreditCardResponseDTO> create(
             @AuthenticationPrincipal AuthenticatedUser user,
             @Valid @RequestBody CreditCardRequestDTO dto) {
-        log.info("POST to create credit card for account {}", user.getAccountId());
+        log.info("POST to create credit card for account {} with holder {}", user.getAccountId(), dto.getHolderId());
         CreditCard entity = creditCardMapper.toEntity(dto);
-        CreditCard saved = creditCardService.create(entity, user.getAccountId());
+        CreditCard saved = creditCardService.create(entity, user.getAccountId(), dto.getHolderId());
         return ResponseEntity.ok(creditCardMapper.toDTO(saved));
     }
 }

@@ -2,6 +2,7 @@ package com.relyon.credflow.model.credit_card;
 
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
+import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -49,4 +50,10 @@ public class CreditCard extends BaseEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Account account;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "holder_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User holder;
 }

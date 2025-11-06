@@ -11,7 +11,10 @@ import org.mapstruct.*;
 public interface CreditCardMapper {
 
 
-    @Mapping(target = "account", source = "account.id")
+    @Mapping(target = "account", expression = "java(entity.getAccount() != null ? entity.getAccount().getId() : null)")
+    @Mapping(target = "holder.id", source = "holder.id")
+    @Mapping(target = "holder.name", source = "holder.name")
+    @Mapping(target = "holder.email", source = "holder.email")
     @Mapping(target = "availableCreditLimit", ignore = true)
     CreditCardResponseDTO toDTO(CreditCard entity);
 
@@ -19,5 +22,6 @@ public interface CreditCardMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "account", ignore = true)
+    @Mapping(target = "holder", ignore = true)
     CreditCard toEntity(CreditCardRequestDTO dto);
 }

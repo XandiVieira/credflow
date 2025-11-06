@@ -15,5 +15,6 @@ public class CreditCardRequestDTO {
     private Integer closingDay;
     private Integer dueDay;
     private BigDecimal creditLimit;
+    private Long holderId;
 
 }

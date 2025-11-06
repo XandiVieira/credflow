@@ -10,6 +10,7 @@ public class CreditCardResponseDTO {
 
     private Long id;
     private Long account;
+    private HolderDTO holder;
     private String nickname;
     private String brand;
     private String tier;
@@ -19,5 +20,12 @@ public class CreditCardResponseDTO {
     private Integer dueDay;
     private BigDecimal creditLimit;
     private BigDecimal availableCreditLimit;
+
+    @Data
+    public static class HolderDTO {
+        private Long id;
+        private String name;
+        private String email;
+    }
 
 }
