@@ -3,8 +3,8 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.repository.CreditCardRepository;
-import com.relyon.credflow.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ import java.util.List;
 @Slf4j
 public class CreditCardBillingService {
 
-    private final TransactionRepository transactionRepository;
+    private final TransactionService transactionService;
     private final CreditCardRepository creditCardRepository;
 
     public BigDecimal computeAvailableLimit(Long creditCardId) {
@@ -30,8 +30,20 @@ public class CreditCardBillingService {
         LocalDate billingCycleStartDate = calculateBillingCycleStartDate(creditCard.getClosingDay());
         log.info("Billing cycle start date for card {}: {}", creditCardId, billingCycleStartDate);
 
-        List<Transaction> transactions =
-                transactionRepository.findByCreditCardIdAndDateAfter(creditCardId, billingCycleStartDate);
+        TransactionFilter filter = new TransactionFilter(
+                null,
+                billingCycleStartDate,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                creditCardId
+        );
+
+        List<Transaction> transactions = transactionService.search(filter, null);
 
         BigDecimal totalSpent = transactions.stream()
                 .map(Transaction::getValue)
@@ -52,8 +64,20 @@ public class CreditCardBillingService {
         LocalDate cycleClosingDate = calculateBillingCycleClosingDate(closingDay);
         LocalDate dueDate = calculateBillingDueDate(closingDay, dueDay);
 
-        List<Transaction> transactions =
-                transactionRepository.findByCreditCardIdAndDateAfter(creditCardId, cycleStartDate);
+        TransactionFilter filter = new TransactionFilter(
+                null,
+                cycleStartDate,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                creditCardId
+        );
+
+        List<Transaction> transactions = transactionService.search(filter, null);
 
         BigDecimal totalAmount = transactions.stream()
                 .map(Transaction::getValue)

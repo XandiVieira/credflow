@@ -13,5 +13,6 @@ public record TransactionFilter(
         BigDecimal minAmount,
         BigDecimal maxAmount,
         List<Long> responsibleUserIds,
-        List<Long> categoryIds
+        List<Long> categoryIds,
+        Long creditCardId
 ) {}

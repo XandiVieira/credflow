@@ -56,7 +56,7 @@ public class TransactionController {
             @ParameterObject Sort sort,
             @AuthenticationPrincipal AuthenticatedUser user
     ) {
-        var result = transactionService.search(transactionFilter, sort).stream().map(mapper::toDto).toList();
+        var result = transactionService.search(transactionFilter, sort).stream().map(transactionMapper::toDto).toList();
         return ResponseEntity.ok(result);
     }
 
