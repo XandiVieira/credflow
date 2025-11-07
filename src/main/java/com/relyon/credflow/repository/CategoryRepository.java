@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
-    @EntityGraph(attributePaths = "defaultResponsibles")
+    @EntityGraph(attributePaths = {"defaultResponsibles", "parentCategory"})
     List<Category> findAllByAccountId(Long accountId);
 
-    @EntityGraph(attributePaths = "defaultResponsibles")
+    @EntityGraph(attributePaths = {"defaultResponsibles", "parentCategory"})
     Optional<Category> findByIdAndAccountId(Long id, Long accountId);
 
     Optional<Category> findByNameIgnoreCaseAndAccountId(String name, Long accountId);

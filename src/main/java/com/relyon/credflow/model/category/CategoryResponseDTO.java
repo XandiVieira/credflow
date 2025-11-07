@@ -9,4 +9,7 @@ public class CategoryResponseDTO {
     private Long id;
     private String name;
     private List<Long> defaultResponsibleIds;
+    private Long parentCategoryId;
+    private String parentCategoryName;
+    private List<CategoryResponseDTO> childCategories;
 }
