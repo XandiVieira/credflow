@@ -29,4 +29,13 @@ public class TransactionRequestDTO {
     private List<Long> responsibles;
 
     private Long creditCardId;
+
+    @NotNull(message = "Transaction type is required")
+    private TransactionType transactionType;
+
+    private Integer currentInstallment;
+
+    private Integer totalInstallments;
+
+    private String installmentGroupId;
 }

@@ -56,4 +56,15 @@ public class Transaction extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "credit_card_id")
     private CreditCard creditCard;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'EVENTUAL'")
+    private TransactionType transactionType;
+
+    private Integer currentInstallment;
+
+    private Integer totalInstallments;
+
+    @Column(name = "installment_group_id")
+    private String installmentGroupId;
 }

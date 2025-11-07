@@ -28,6 +28,7 @@ public interface CategoryMapper {
     @Mapping(target = "defaultResponsibleIds", source = "defaultResponsibles", qualifiedByName = "usersToIds")
     @Mapping(target = "parentCategoryId", source = "parentCategory.id")
     @Mapping(target = "parentCategoryName", source = "parentCategory.name")
+    @Mapping(target = "childCategories", ignore = true)
     CategoryResponseDTO toDto(Category category);
 
     @Named("idsToUsers")

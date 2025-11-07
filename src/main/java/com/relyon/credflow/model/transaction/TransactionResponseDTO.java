@@ -17,6 +17,10 @@ public class TransactionResponseDTO {
     private Long accountId;
     private List<Long> responsibles;
     private CreditCardDTO creditCard;
+    private TransactionType transactionType;
+    private Integer currentInstallment;
+    private Integer totalInstallments;
+    private String installmentGroupId;
 
     @Data
     public static class CreditCardDTO {
