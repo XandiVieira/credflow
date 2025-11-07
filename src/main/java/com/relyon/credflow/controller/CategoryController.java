@@ -3,7 +3,7 @@ package com.relyon.credflow.controller;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.category.CategoryRequestDTO;
 import com.relyon.credflow.model.category.CategoryResponseDTO;
-import com.relyon.credflow.model.category.CategorySimpleDTO;
+import com.relyon.credflow.model.category.CategorySelectDTO;
 import com.relyon.credflow.model.mapper.CategoryMapper;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.service.CategoryService;
@@ -55,12 +55,12 @@ public class CategoryController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/simple")
-    public ResponseEntity<List<CategorySimpleDTO>> getAllSimple(
+    @GetMapping("/select")
+    public ResponseEntity<List<CategorySelectDTO>> getAllSelect(
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        log.info("GET simple category list for account {}", user.getAccountId());
-        var response = service.findAllSimpleByAccount(user.getAccountId());
+        log.info("GET select category list for account {}", user.getAccountId());
+        var response = service.findAllSelectByAccount(user.getAccountId());
         return ResponseEntity.ok(response);
     }
 

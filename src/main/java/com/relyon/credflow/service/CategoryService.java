@@ -4,7 +4,7 @@ import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.category.CategoryResponseDTO;
-import com.relyon.credflow.model.category.CategorySimpleDTO;
+import com.relyon.credflow.model.category.CategorySelectDTO;
 import com.relyon.credflow.model.mapper.CategoryMapper;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
@@ -164,10 +164,10 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
-    public List<CategorySimpleDTO> findAllSimpleByAccount(Long accountId) {
-        log.info("Fetching simple category list for account {}", accountId);
+    public List<CategorySelectDTO> findAllSelectByAccount(Long accountId) {
+        log.info("Fetching select category list for account {}", accountId);
         return repository.findAllByAccountId(accountId).stream()
-                .map(category -> new CategorySimpleDTO(category.getId(), category.getName()))
+                .map(category -> new CategorySelectDTO(category.getId(), category.getName()))
                 .collect(Collectors.toList());
     }
 

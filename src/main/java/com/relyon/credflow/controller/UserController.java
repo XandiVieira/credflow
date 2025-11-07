@@ -5,7 +5,7 @@ import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.model.user.UserResponseDTO;
-import com.relyon.credflow.model.user.UserSimpleDTO;
+import com.relyon.credflow.model.user.UserSelectDTO;
 import com.relyon.credflow.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,12 +35,12 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-    @GetMapping("/simple")
-    public ResponseEntity<List<UserSimpleDTO>> getAllSimple(
+    @GetMapping("/select")
+    public ResponseEntity<List<UserSelectDTO>> getAllSelect(
             @AuthenticationPrincipal AuthenticatedUser user) {
 
-        log.info("GET simple user list for account {}", user.getAccountId());
-        var response = userService.findAllSimpleByAccount(user.getAccountId());
+        log.info("GET select user list for account {}", user.getAccountId());
+        var response = userService.findAllSelectByAccount(user.getAccountId());
         return ResponseEntity.ok(response);
     }
 

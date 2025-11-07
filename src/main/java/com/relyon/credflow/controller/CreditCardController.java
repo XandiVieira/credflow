@@ -3,6 +3,7 @@ package com.relyon.credflow.controller;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardRequestDTO;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
+import com.relyon.credflow.model.credit_card.CreditCardSelectDTO;
 import com.relyon.credflow.model.mapper.CreditCardMapper;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.service.CreditCardService;
@@ -31,6 +32,15 @@ public class CreditCardController {
         log.info("GET all credit cards for account {}", user.getAccountId());
         var creditCards = creditCardService.findAll(user.getAccountId());
         return ResponseEntity.ok(creditCards);
+    }
+
+    @GetMapping("/select")
+    public ResponseEntity<List<CreditCardSelectDTO>> getAllSelect(
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        log.info("GET select credit card list for account {}", user.getAccountId());
+        var response = creditCardService.findAllSelectByAccount(user.getAccountId());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
