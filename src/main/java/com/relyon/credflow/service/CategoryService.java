@@ -142,11 +142,6 @@ public class CategoryService {
         log.info("Category ID {} deleted", id);
     }
 
-    public List<Category> findAllByAccount(Long accountId) {
-        log.info("Fetching all categories for account {}", accountId);
-        return repository.findAllByAccountId(accountId);
-    }
-
     public List<CategoryResponseDTO> findAllByAccountHierarchical(Long accountId) {
         log.info("Fetching all categories hierarchically for account {}", accountId);
 
@@ -169,9 +164,6 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Returns a simple list of categories with only id and name (for dropdowns/selects)
-     */
     public List<CategorySimpleDTO> findAllSimpleByAccount(Long accountId) {
         log.info("Fetching simple category list for account {}", accountId);
         return repository.findAllByAccountId(accountId).stream()
