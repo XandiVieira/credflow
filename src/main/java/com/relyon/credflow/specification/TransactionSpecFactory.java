@@ -46,6 +46,7 @@ public class TransactionSpecFactory  {
     private static Specification<Transaction> anyResponsibleIn(List<Long> userIds) {
         return (root, q, cb) -> {
             if (userIds == null || userIds.isEmpty()) return null;
+            assert q != null;
             q.distinct(true);
             var join = root.join("responsibles", JoinType.LEFT);
             return join.get("id").in(userIds);
@@ -54,6 +55,7 @@ public class TransactionSpecFactory  {
     private static Specification<Transaction> categoryIn(List<Long> categoryIds) {
         return (root, q, cb) -> {
             if (categoryIds == null || categoryIds.isEmpty()) return null;
+            assert q != null;
             q.distinct(true);
             var join = root.join("category", JoinType.LEFT);
             return join.get("id").in(categoryIds);

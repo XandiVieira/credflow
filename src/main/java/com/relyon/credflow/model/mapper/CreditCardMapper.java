@@ -4,7 +4,6 @@ import com.relyon.credflow.configuration.MapStructCentralConfig;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardRequestDTO;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
-import com.relyon.credflow.service.CreditCardService;
 import org.mapstruct.*;
 
 @Mapper(config = MapStructCentralConfig.class)

@@ -23,15 +23,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
     Optional<Transaction> findByIdAndAccountId(Long id, Long accountId);
 
-    @EntityGraph(attributePaths = {"responsibles", "category"})
-    List<Transaction> findAll(Specification<Transaction> spec, Sort sort);
-    @Query("""
-            select t from Transaction t
-            where t.creditCard.id = :creditCardId
-            and t.date >= :fromDate
-            """)
-    List<Transaction> findByCreditCardIdAndDateAfter(Long creditCardId, LocalDate fromDate);
-
     @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
     @Query("""
             select distinct t

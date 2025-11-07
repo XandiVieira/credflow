@@ -154,21 +154,19 @@ public class CategoryService {
 
         var allDtos = allCategories.stream()
                 .map(categoryMapper::toDto)
-                .collect(Collectors.toList());
+                .toList();
 
         Map<Long, List<CategoryResponseDTO>> childrenByParentId = allDtos.stream()
                 .filter(dto -> dto.getParentCategoryId() != null)
                 .collect(Collectors.groupingBy(CategoryResponseDTO::getParentCategoryId));
 
-        List<CategoryResponseDTO> parentCategories = allDtos.stream()
+        return allDtos.stream()
                 .filter(dto -> dto.getParentCategoryId() == null)
                 .peek(parent -> {
                     List<CategoryResponseDTO> children = childrenByParentId.getOrDefault(parent.getId(), new ArrayList<>());
                     parent.setChildCategories(children);
                 })
                 .collect(Collectors.toList());
-
-        return parentCategories;
     }
 
     /**
@@ -186,7 +184,7 @@ public class CategoryService {
     }
 
     private Category validateAndResolveParentCategory(Long parentId, Long accountId, Long currentCategoryId) {
-        if (currentCategoryId != null && parentId.equals(currentCategoryId)) {
+        if (parentId.equals(currentCategoryId)) {
             throw new IllegalArgumentException("A category cannot be its own parent.");
         }
 
