@@ -1,14 +1,17 @@
 package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.UserMapper;
+import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.model.user.UserResponseDTO;
+import com.relyon.credflow.model.user.UserSimpleDTO;
 import com.relyon.credflow.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +33,15 @@ public class UserController {
                 .toList();
         log.info("Returning {} users", users.size());
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/simple")
+    public ResponseEntity<List<UserSimpleDTO>> getAllSimple(
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        log.info("GET simple user list for account {}", user.getAccountId());
+        var response = userService.findAllSimpleByAccount(user.getAccountId());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

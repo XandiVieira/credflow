@@ -4,6 +4,7 @@ import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
+import com.relyon.credflow.model.user.UserSimpleDTO;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,5 +109,26 @@ public class UserService {
                     log.warn("User not found with email {}", email);
                     return new ResourceNotFoundException("User not found with email " + email);
                 });
+    }
+
+    /**
+     * Returns a simple list of users with only id and first name (for dropdowns/selects)
+     */
+    public List<UserSimpleDTO> findAllSimpleByAccount(Long accountId) {
+        log.info("Fetching simple user list for account {}", accountId);
+        return userRepository.findByAccountId(accountId).stream()
+                .map(user -> {
+                    String firstName = extractFirstName(user.getName());
+                    return new UserSimpleDTO(user.getId(), firstName);
+                })
+                .toList();
+    }
+
+    private String extractFirstName(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return "";
+        }
+        String[] parts = fullName.trim().split("\\s+");
+        return parts[0];
     }
 }
