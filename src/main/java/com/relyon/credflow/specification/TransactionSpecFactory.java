@@ -24,7 +24,7 @@ public class TransactionSpecFactory  {
                 amountLte(f.maxAmount()),
                 anyResponsibleIn(f.responsibleUserIds()),
                 categoryIn(f.categoryIds()),
-                creditCardIdEq(f.creditCardId())
+                creditCardIn(f.creditCardIds())
         );
     }
 
@@ -72,7 +72,13 @@ public class TransactionSpecFactory  {
         s = s.trim();
         return s.isEmpty() ? null : "%" + s.toLowerCase() + "%";
     }
-    private static Specification<Transaction> creditCardIdEq(Long creditCardId) {
-        return (root, q, cb) -> creditCardId == null ? null : cb.equal(root.get("creditCard").get("id"), creditCardId);
+    private static Specification<Transaction> creditCardIn(List<Long> creditCardIds) {
+        return (root, q, cb) -> {
+            if (creditCardIds == null || creditCardIds.isEmpty()) return null;
+            assert q != null;
+            q.distinct(true);
+            var join = root.join("creditCard", JoinType.LEFT);
+            return join.get("id").in(creditCardIds);
+        };
     }
 }

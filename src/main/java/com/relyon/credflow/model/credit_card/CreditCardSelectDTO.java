@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreditCardSelectDTO {
     private Long id;
-    private String description;
+    private String name;
 }

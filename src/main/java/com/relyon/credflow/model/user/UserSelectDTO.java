@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserSelectDTO {
     private Long id;
-    private String firstName;
+    private String name;
 }

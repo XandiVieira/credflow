@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -40,7 +41,7 @@ public class CreditCardBillingService {
                 null,
                 null,
                 null,
-                creditCardId
+                List.of(creditCardId)
         );
 
         List<Transaction> transactions = transactionService.search(filter, null);
@@ -74,7 +75,7 @@ public class CreditCardBillingService {
                 null,
                 null,
                 null,
-                creditCardId
+                List.of(creditCardId)
         );
 
         List<Transaction> transactions = transactionService.search(filter, null);
