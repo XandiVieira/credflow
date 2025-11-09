@@ -346,4 +346,187 @@ class CategoryServiceTest {
         verify(repository, never()).delete(any());
         verifyNoMoreInteractions(repository, accountService);
     }
+
+    @Test
+    void create_withValidParentCategory_setsParentAndSaves() {
+        var accountId = 20L;
+        var parentId = 1L;
+
+        var input = new Category();
+        input.setName("Eventos");
+
+        var parentStub = new Category();
+        parentStub.setId(parentId);
+        input.setParentCategory(parentStub);
+
+        var account = new Account();
+        account.setId(accountId);
+
+        var parentCategory = new Category();
+        parentCategory.setId(parentId);
+        parentCategory.setName("Vida Social");
+        parentCategory.setParentCategory(null);
+
+        var saved = new Category();
+        saved.setId(99L);
+        saved.setName("Eventos");
+        saved.setParentCategory(parentCategory);
+
+        when(repository.findByNameIgnoreCaseAndAccountId("eventos", accountId)).thenReturn(Optional.empty());
+        when(accountService.findById(accountId)).thenReturn(account);
+        when(repository.findByIdAndAccountId(parentId, accountId)).thenReturn(Optional.of(parentCategory));
+        when(repository.save(same(input))).thenReturn(saved);
+
+        var result = service.create(input, accountId);
+
+        assertSame(saved, result);
+        assertSame(parentCategory, input.getParentCategory());
+
+        verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("eventos", accountId);
+        verify(accountService, times(1)).findById(accountId);
+        verify(repository, times(1)).findByIdAndAccountId(parentId, accountId);
+        verify(repository, times(1)).save(same(input));
+    }
+
+    @Test
+    void create_withNonExistentParentCategory_throwsResourceNotFound() {
+        var accountId = 20L;
+        var parentId = 999L;
+
+        var input = new Category();
+        input.setName("Eventos");
+
+        var parentStub = new Category();
+        parentStub.setId(parentId);
+        input.setParentCategory(parentStub);
+
+        var account = new Account();
+        account.setId(accountId);
+
+        when(repository.findByNameIgnoreCaseAndAccountId("eventos", accountId)).thenReturn(Optional.empty());
+        when(accountService.findById(accountId)).thenReturn(account);
+        when(repository.findByIdAndAccountId(parentId, accountId)).thenReturn(Optional.empty());
+
+        var ex = assertThrows(ResourceNotFoundException.class, () -> service.create(input, accountId));
+        assertTrue(ex.getMessage().contains("Parent category"));
+
+        verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("eventos", accountId);
+        verify(accountService, times(1)).findById(accountId);
+        verify(repository, times(1)).findByIdAndAccountId(parentId, accountId);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void create_withParentThatIsAlreadyAChild_throwsIllegalArgument() {
+        var accountId = 20L;
+        var parentId = 2L;
+
+        var input = new Category();
+        input.setName("Sub-Eventos");
+
+        var parentStub = new Category();
+        parentStub.setId(parentId);
+        input.setParentCategory(parentStub);
+
+        var account = new Account();
+        account.setId(accountId);
+
+        var grandParent = new Category();
+        grandParent.setId(1L);
+        grandParent.setName("Vida Social");
+
+        var parentCategory = new Category();
+        parentCategory.setId(parentId);
+        parentCategory.setName("Eventos");
+        parentCategory.setParentCategory(grandParent); // já é uma categoria filha
+
+        when(repository.findByNameIgnoreCaseAndAccountId("sub-eventos", accountId)).thenReturn(Optional.empty());
+        when(accountService.findById(accountId)).thenReturn(account);
+        when(repository.findByIdAndAccountId(parentId, accountId)).thenReturn(Optional.of(parentCategory));
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> service.create(input, accountId));
+        assertTrue(ex.getMessage().contains("already a child category"));
+        assertTrue(ex.getMessage().contains("two levels"));
+
+        verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("sub-eventos", accountId);
+        verify(accountService, times(1)).findById(accountId);
+        verify(repository, times(1)).findByIdAndAccountId(parentId, accountId);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void update_withValidParentCategory_updatesParentAndSaves() {
+        var id = 50L;
+        var accountId = 30L;
+        var parentId = 1L;
+
+        var updated = new Category();
+        updated.setName("Eventos");
+
+        var parentStub = new Category();
+        parentStub.setId(parentId);
+        updated.setParentCategory(parentStub);
+
+        var existing = new Category();
+        existing.setId(id);
+        existing.setName("Eventos");
+        existing.setParentCategory(null);
+
+        var account = new Account();
+        account.setId(accountId);
+
+        var parentCategory = new Category();
+        parentCategory.setId(parentId);
+        parentCategory.setName("Vida Social");
+        parentCategory.setParentCategory(null);
+
+        when(repository.findByNameIgnoreCaseAndAccountId("eventos", accountId)).thenReturn(Optional.empty());
+        when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existing));
+        when(accountService.findById(accountId)).thenReturn(account);
+        when(repository.findByIdAndAccountId(parentId, accountId)).thenReturn(Optional.of(parentCategory));
+        when(repository.save(same(existing))).thenReturn(existing);
+
+        var result = service.update(id, updated, accountId);
+
+        assertSame(existing, result);
+        assertSame(parentCategory, existing.getParentCategory());
+
+        verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("eventos", accountId);
+        verify(repository, times(1)).findByIdAndAccountId(id, accountId);
+        verify(accountService, times(1)).findById(accountId);
+        verify(repository, times(1)).findByIdAndAccountId(parentId, accountId);
+        verify(repository, times(1)).save(same(existing));
+    }
+
+    @Test
+    void update_cannotSetItselfAsParent_throwsIllegalArgument() {
+        var id = 50L;
+        var accountId = 30L;
+
+        var updated = new Category();
+        updated.setName("Eventos");
+
+        var parentStub = new Category();
+        parentStub.setId(id); // mesma categoria
+        updated.setParentCategory(parentStub);
+
+        var existing = new Category();
+        existing.setId(id);
+        existing.setName("Eventos");
+
+        var account = new Account();
+        account.setId(accountId);
+
+        when(repository.findByNameIgnoreCaseAndAccountId("eventos", accountId)).thenReturn(Optional.empty());
+        when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existing));
+        when(accountService.findById(accountId)).thenReturn(account);
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> service.update(id, updated, accountId));
+        assertTrue(ex.getMessage().contains("cannot be its own parent"));
+
+        verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("eventos", accountId);
+        verify(repository, times(1)).findByIdAndAccountId(id, accountId);
+        verify(accountService, times(1)).findById(accountId);
+        verify(repository, never()).save(any());
+    }
 }

@@ -12,4 +12,6 @@ public class CategoryRequestDTO {
     private String name;
 
     private List<Long> defaultResponsibleIds;
+
+    private Long parentCategoryId;
 }

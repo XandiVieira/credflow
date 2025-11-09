@@ -22,9 +22,13 @@ public interface CategoryMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "defaultResponsibles", source = "defaultResponsibleIds", qualifiedByName = "idsToUsers")
+    @Mapping(target = "parentCategory", source = "parentCategoryId", qualifiedByName = "idToCategory")
     Category toEntity(CategoryRequestDTO dto);
 
     @Mapping(target = "defaultResponsibleIds", source = "defaultResponsibles", qualifiedByName = "usersToIds")
+    @Mapping(target = "parentCategoryId", source = "parentCategory.id")
+    @Mapping(target = "parentCategoryName", source = "parentCategory.name")
+    @Mapping(target = "childCategories", ignore = true)
     CategoryResponseDTO toDto(Category category);
 
     @Named("idsToUsers")
@@ -44,5 +48,13 @@ public interface CategoryMapper {
     default List<Long> usersToIds(Set<User> users) {
         if (users == null) return List.of();
         return users.stream().map(User::getId).filter(Objects::nonNull).toList();
+    }
+
+    @Named("idToCategory")
+    default Category idToCategory(Long id) {
+        if (id == null) return null;
+        Category category = new Category();
+        category.setId(id);
+        return category;
     }
 }

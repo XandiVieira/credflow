@@ -3,6 +3,9 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.category.Category;
+import com.relyon.credflow.model.category.CategoryResponseDTO;
+import com.relyon.credflow.model.category.CategorySelectDTO;
+import com.relyon.credflow.model.mapper.CategoryMapper;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +27,7 @@ public class CategoryService {
     private final CategoryRepository repository;
     private final AccountService accountService;
     private final UserService userService;
+    private final CategoryMapper categoryMapper;
 
     public List<Category> findAll(Long accountId) {
         log.info("Fetching all categories for account {}", accountId);
@@ -50,6 +57,14 @@ public class CategoryService {
         category.setDefaultResponsibles(
                 resolveResponsiblesForAccount(category.getDefaultResponsibles(), accountId)
         );
+
+        if (category.getParentCategory() != null && category.getParentCategory().getId() != null) {
+            var parentCategory = validateAndResolveParentCategory(
+                    category.getParentCategory().getId(),
+                    accountId
+            );
+            category.setParentCategory(parentCategory);
+        }
 
         return repository.save(category);
     }
@@ -102,6 +117,16 @@ public class CategoryService {
             category.getDefaultResponsibles().addAll(resolved);
         }
 
+        if (updated.getParentCategory() != null) {
+            Long parentId = updated.getParentCategory().getId();
+            if (parentId != null) {
+                var parentCategory = validateAndResolveParentCategory(parentId, accountId, id);
+                category.setParentCategory(parentCategory);
+            } else {
+                category.setParentCategory(null);
+            }
+        }
+
         var saved = repository.save(category);
         log.info("Category ID {} updated", saved.getId());
         return saved;
@@ -117,8 +142,56 @@ public class CategoryService {
         log.info("Category ID {} deleted", id);
     }
 
-    public List<Category> findAllByAccount(Long accountId) {
-        log.info("Fetching all categories for account {}", accountId);
-        return repository.findAllByAccountId(accountId);
+    public List<CategoryResponseDTO> findAllByAccountHierarchical(Long accountId) {
+        log.info("Fetching all categories hierarchically for account {}", accountId);
+
+        var allCategories = repository.findAllByAccountId(accountId);
+
+        var allDtos = allCategories.stream()
+                .map(categoryMapper::toDto)
+                .toList();
+
+        Map<Long, List<CategoryResponseDTO>> childrenByParentId = allDtos.stream()
+                .filter(dto -> dto.getParentCategoryId() != null)
+                .collect(Collectors.groupingBy(CategoryResponseDTO::getParentCategoryId));
+
+        return allDtos.stream()
+                .filter(dto -> dto.getParentCategoryId() == null)
+                .peek(parent -> {
+                    List<CategoryResponseDTO> children = childrenByParentId.getOrDefault(parent.getId(), new ArrayList<>());
+                    parent.setChildCategories(children);
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<CategorySelectDTO> findAllSelectByAccount(Long accountId) {
+        log.info("Fetching select category list for account {}", accountId);
+        return repository.findAllByAccountId(accountId).stream()
+                .map(category -> new CategorySelectDTO(category.getId(), category.getName()))
+                .collect(Collectors.toList());
+    }
+
+    private Category validateAndResolveParentCategory(Long parentId, Long accountId) {
+        return validateAndResolveParentCategory(parentId, accountId, null);
+    }
+
+    private Category validateAndResolveParentCategory(Long parentId, Long accountId, Long currentCategoryId) {
+        if (parentId.equals(currentCategoryId)) {
+            throw new IllegalArgumentException("A category cannot be its own parent.");
+        }
+
+        var parentCategory = repository.findByIdAndAccountId(parentId, accountId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Parent category with ID " + parentId + " not found."
+                ));
+
+        if (parentCategory.getParentCategory() != null) {
+            throw new IllegalArgumentException(
+                    "Category '" + parentCategory.getName() + "' is already a child category. " +
+                    "Only two levels of hierarchy are allowed (parent and child)."
+            );
+        }
+
+        return parentCategory;
     }
 }

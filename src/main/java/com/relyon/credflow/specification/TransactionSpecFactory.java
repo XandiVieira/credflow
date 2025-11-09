@@ -23,7 +23,8 @@ public class TransactionSpecFactory  {
                 amountGte(f.minAmount()),
                 amountLte(f.maxAmount()),
                 anyResponsibleIn(f.responsibleUserIds()),
-                categoryIn(f.categoryIds())
+                categoryIn(f.categoryIds()),
+                creditCardIn(f.creditCardIds())
         );
     }
 
@@ -45,6 +46,7 @@ public class TransactionSpecFactory  {
     private static Specification<Transaction> anyResponsibleIn(List<Long> userIds) {
         return (root, q, cb) -> {
             if (userIds == null || userIds.isEmpty()) return null;
+            assert q != null;
             q.distinct(true);
             var join = root.join("responsibles", JoinType.LEFT);
             return join.get("id").in(userIds);
@@ -53,6 +55,7 @@ public class TransactionSpecFactory  {
     private static Specification<Transaction> categoryIn(List<Long> categoryIds) {
         return (root, q, cb) -> {
             if (categoryIds == null || categoryIds.isEmpty()) return null;
+            assert q != null;
             q.distinct(true);
             var join = root.join("category", JoinType.LEFT);
             return join.get("id").in(categoryIds);
@@ -68,5 +71,14 @@ public class TransactionSpecFactory  {
         if (s == null) return null;
         s = s.trim();
         return s.isEmpty() ? null : "%" + s.toLowerCase() + "%";
+    }
+    private static Specification<Transaction> creditCardIn(List<Long> creditCardIds) {
+        return (root, q, cb) -> {
+            if (creditCardIds == null || creditCardIds.isEmpty()) return null;
+            assert q != null;
+            q.distinct(true);
+            var join = root.join("creditCard", JoinType.LEFT);
+            return join.get("id").in(creditCardIds);
+        };
     }
 }

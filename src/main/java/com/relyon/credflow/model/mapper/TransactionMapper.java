@@ -24,11 +24,16 @@ public interface TransactionMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "category", source = "categoryId", qualifiedByName = "idToCategory")
     @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "idsToUsers")
+    @Mapping(target = "creditCard", ignore = true)
     Transaction toEntity(TransactionRequestDTO dto);
 
     @Mapping(target = "accountId", source = "account.id")
     @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "usersToIds")
     @Mapping(target = "category", source = "category", qualifiedByName = "categoryToName")
+    @Mapping(target = "creditCard.id", source = "creditCard.id")
+    @Mapping(target = "creditCard.nickname", source = "creditCard.nickname")
+    @Mapping(target = "creditCard.brand", source = "creditCard.brand")
+    @Mapping(target = "creditCard.lastFourDigits", source = "creditCard.lastFourDigits")
     TransactionResponseDTO toDto(Transaction entity);
 
     @Named("categoryToName")

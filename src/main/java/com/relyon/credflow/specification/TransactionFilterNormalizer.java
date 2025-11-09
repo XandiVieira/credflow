@@ -20,7 +20,8 @@ public final class TransactionFilterNormalizer {
                 min,
                 max,
                 f.responsibleUserIds(),
-                f.categoryIds()
+                f.categoryIds(),
+                f.creditCardIds()
         );
     }
 

@@ -1,14 +1,17 @@
 package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.UserMapper;
+import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.model.user.UserResponseDTO;
+import com.relyon.credflow.model.user.UserSelectDTO;
 import com.relyon.credflow.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,23 +23,32 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    private final UserMapper mapper;
+    private final UserMapper userMapper;
 
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         log.info("GET request to fetch all users");
         var users = userService.findAll().stream()
-                .map(mapper::toDto)
+                .map(userMapper::toDto)
                 .toList();
         log.info("Returning {} users", users.size());
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/select")
+    public ResponseEntity<List<UserSelectDTO>> getAllSelect(
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        log.info("GET select user list for account {}", user.getAccountId());
+        var response = userService.findAllSelectByAccount(user.getAccountId());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDTO> findById(@PathVariable Long id) {
         log.info("GET request to fetch user with ID {}", id);
         var user = userService.findById(id);
-        var response = mapper.toDto(user);
+        var response = userMapper.toDto(user);
         return ResponseEntity.ok(response);
     }
 
@@ -46,9 +58,9 @@ public class UserController {
             @Valid @RequestBody UserRequestDTO dto
     ) {
         log.info("PUT request to update user with ID {}", id);
-        User patch = mapper.toEntity(dto);
+        User patch = userMapper.toEntity(dto);
         var saved = userService.update(id, patch);
-        var response = mapper.toDto(saved);
+        var response = userMapper.toDto(saved);
         log.info("User with ID {} successfully updated", id);
         return ResponseEntity.ok(response);
     }

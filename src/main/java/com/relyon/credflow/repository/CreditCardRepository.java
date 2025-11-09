@@ -1,0 +1,17 @@
+package com.relyon.credflow.repository;
+
+import com.relyon.credflow.model.credit_card.CreditCard;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface CreditCardRepository extends JpaRepository<CreditCard, Long> {
+
+    @EntityGraph(attributePaths = {"account", "holder"})
+    List<CreditCard> findAllByAccountId(Long accountId);
+
+    @EntityGraph(attributePaths = {"account", "holder"})
+    Optional<CreditCard> findByIdAndAccountId(Long id, Long accountId);
+}
