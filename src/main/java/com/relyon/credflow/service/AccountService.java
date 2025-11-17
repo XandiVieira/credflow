@@ -19,6 +19,7 @@ import java.util.UUID;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final LocalizedMessageTranslationService translationService;
 
     public List<Account> findAll() {
         log.info("Fetching all accounts");
@@ -32,7 +33,7 @@ public class AccountService {
         return accountRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("Account with ID {} not found", id);
-                    return new ResourceNotFoundException("Account not found with ID " + id);
+                    return new ResourceNotFoundException("resource.account.notFound", id);
                 });
     }
 
@@ -41,7 +42,7 @@ public class AccountService {
         return accountRepository.findByInviteCode(code)
                 .orElseThrow(() -> {
                     log.warn("Account with invite code {} not found", code);
-                    return new ResourceNotFoundException("Account not found with invite code " + code);
+                    return new ResourceNotFoundException("resource.account.notFoundByCode", code);
                 });
     }
 
@@ -95,7 +96,7 @@ public class AccountService {
                 })
                 .orElseThrow(() -> {
                     log.warn("Account with ID {} not found for update", id);
-                    return new ResourceNotFoundException("Account not found with ID " + id);
+                    return new ResourceNotFoundException("resource.account.notFound", id);
                 });
     }
 
@@ -103,7 +104,7 @@ public class AccountService {
         log.info("Deleting account with ID {}", id);
         if (!accountRepository.existsById(id)) {
             log.warn("Cannot delete. Account with ID {} not found", id);
-            throw new ResourceNotFoundException("Account not found with ID " + id);
+            throw new ResourceNotFoundException("resource.account.notFound", id);
         }
         accountRepository.deleteById(id);
         log.info("Account with ID {} successfully deleted", id);

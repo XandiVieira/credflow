@@ -147,13 +147,13 @@ class DescriptionMappingControllerIT {
         mvc.perform(get("/v1/description-mappings")
                         .header("Authorization", ctx.bearer()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", Matchers.hasSize(Matchers.greaterThanOrEqualTo(2))));
+                .andExpect(jsonPath("$.content", Matchers.hasSize(Matchers.greaterThanOrEqualTo(2))));
 
         mvc.perform(get("/v1/description-mappings")
                         .header("Authorization", ctx.bearer())
                         .param("onlyIncomplete", "true"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", Matchers.hasSize(0)));
+                .andExpect(jsonPath("$.content", Matchers.hasSize(0)));
     }
 
     @Test

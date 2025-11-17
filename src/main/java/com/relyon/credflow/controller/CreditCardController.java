@@ -26,11 +26,13 @@ public class CreditCardController {
     private final CreditCardMapper creditCardMapper;
 
     @GetMapping
-    public ResponseEntity<List<CreditCardResponseDTO>> getAllByAccountId(
-            @AuthenticationPrincipal AuthenticatedUser user) {
+    public ResponseEntity<org.springframework.data.domain.Page<CreditCardResponseDTO>> getAllByAccountId(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-        log.info("GET all credit cards for account {}", user.getAccountId());
-        var creditCards = creditCardService.findAll(user.getAccountId());
+        log.info("GET all credit cards for account {} (page={}, size={})", user.getAccountId(), page, size);
+        var creditCards = creditCardService.findAll(user.getAccountId(), page, size);
         return ResponseEntity.ok(creditCards);
     }
 

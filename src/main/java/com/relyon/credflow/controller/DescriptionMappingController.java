@@ -45,16 +45,17 @@ public class DescriptionMappingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DescriptionMappingResponseDTO>> findAll(
+    public ResponseEntity<org.springframework.data.domain.Page<DescriptionMappingResponseDTO>> findAll(
             @AuthenticationPrincipal AuthenticatedUser user,
-            @RequestParam(required = false) Boolean onlyIncomplete
+            @RequestParam(required = false) Boolean onlyIncomplete,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        log.info("GET all description mappings for account {} (onlyIncomplete={})",
-                user.getAccountId(), onlyIncomplete);
+        log.info("GET all description mappings for account {} (onlyIncomplete={}, page={}, size={})",
+                user.getAccountId(), onlyIncomplete, page, size);
 
-        var result = service.findAll(user.getAccountId(), onlyIncomplete).stream()
-                .map(descriptionMappingMapper::toDto)
-                .toList();
+        var result = service.findAll(user.getAccountId(), onlyIncomplete, page, size)
+                .map(descriptionMappingMapper::toDto);
 
         return ResponseEntity.ok(result);
     }

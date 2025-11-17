@@ -24,7 +24,8 @@ public class TransactionSpecFactory  {
                 amountLte(f.maxAmount()),
                 anyResponsibleIn(f.responsibleUserIds()),
                 categoryIn(f.categoryIds()),
-                creditCardIn(f.creditCardIds())
+                creditCardIn(f.creditCardIds()),
+                filterReversals(f.includeReversals())
         );
     }
 
@@ -48,7 +49,7 @@ public class TransactionSpecFactory  {
             if (userIds == null || userIds.isEmpty()) return null;
             assert q != null;
             q.distinct(true);
-            var join = root.join("responsibles", JoinType.LEFT);
+            var join = root.join("responsibleUsers", JoinType.LEFT);
             return join.get("id").in(userIds);
         };
     }
@@ -79,6 +80,15 @@ public class TransactionSpecFactory  {
             q.distinct(true);
             var join = root.join("creditCard", JoinType.LEFT);
             return join.get("id").in(creditCardIds);
+        };
+    }
+
+    private static Specification<Transaction> filterReversals(Boolean includeReversals) {
+        return (root, q, cb) -> {
+            if (Boolean.TRUE.equals(includeReversals)) {
+                return null;
+            }
+            return cb.equal(root.get("isReversal"), false);
         };
     }
 }

@@ -8,6 +8,7 @@ import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionFilter;
+import com.relyon.credflow.model.transaction.TransactionSource;
 import com.relyon.credflow.model.transaction.TransactionType;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CreditCardRepository;
@@ -46,6 +47,8 @@ public class TransactionService {
     private final UserService userService;
     private final CategoryService categoryService;
     private final CreditCardRepository creditCardRepository;
+    private final RefundDetectionService refundDetectionService;
+    private final LocalizedMessageTranslationService translationService;
 
     private final DateTimeFormatter banrisulCsvDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -70,12 +73,15 @@ public class TransactionService {
                 mappingRepository.saveAll(pending.values());
             }
 
+            log.info("Running refund detection on {} imported transactions", saved.size());
+            saved.forEach(refundDetectionService::detectAndLinkReversal);
+
             log.info("Import completed. Transactions saved: {}", saved.size());
             return saved;
 
         } catch (Exception e) {
             log.error("Error processing CSV: {}", e.getMessage(), e);
-            throw new CsvProcessingException("CSV processing error: " + e.getMessage(), e);
+            throw new CsvProcessingException("csv.processing.error", e, e.getMessage());
         }
     }
 
@@ -117,9 +123,14 @@ public class TransactionService {
                     value,
                     null
             );
-            tx.setChecksum(DigestUtils.sha256Hex(line.trim()));
+            var checksum = DigestUtils.sha256Hex(line.trim());
+            tx.setChecksum(checksum);
             tx.setAccount(account);
-            tx.setTransactionType(TransactionType.EVENTUAL); // Default for CSV imports
+            tx.setTransactionType(TransactionType.ONE_TIME);
+
+            initializeSourceTrackingFields(tx, TransactionSource.CSV_IMPORT, null);
+            tx.setOriginalChecksum(checksum);
+
             return Optional.of(tx);
 
         } catch (Exception ex) {
@@ -145,28 +156,36 @@ public class TransactionService {
         }
 
         if (tx.getCreditCard() != null && tx.getCreditCard().getId() != null) {
-            CreditCard creditCard = creditCardRepository.findByIdAndAccountId(tx.getCreditCard().getId(), accountId)
-                    .orElseThrow(() -> new IllegalArgumentException("Credit card not found or does not belong to this account"));
+            var creditCard = creditCardRepository.findByIdAndAccountId(tx.getCreditCard().getId(), accountId)
+                    .orElseThrow(() -> new IllegalArgumentException(translationService.translateMessage("resource.creditCard.notFound")));
             tx.setCreditCard(creditCard);
         }
 
-        tx.setResponsibles(resolveResponsiblesForAccount(tx.getResponsibles(), accountId));
+        tx.setResponsibleUsers(resolveResponsibleUsersForAccount(tx.getResponsibleUsers(), accountId));
+
+        initializeSourceTrackingFields(tx, TransactionSource.MANUAL, null);
+
         saveMappingIfNotExists(tx.getDescription(), tx.getSimplifiedDescription(), tx.getCategory(), tx.getAccount());
-        return repository.save(tx);
+
+        var saved = repository.save(tx);
+
+        refundDetectionService.detectAndLinkReversal(saved);
+
+        return saved;
     }
 
-    private Set<User> resolveResponsiblesForAccount(Set<User> stubs, Long accountId) {
-        if (stubs == null || stubs.isEmpty()) return Collections.emptySet();
+    private Set<User> resolveResponsibleUsersForAccount(Set<User> userStubs, Long accountId) {
+        if (userStubs == null || userStubs.isEmpty()) return Collections.emptySet();
 
-        var ids = stubs.stream().map(User::getId).toList();
+        var ids = userStubs.stream().map(User::getId).toList();
         var found = userService.findAllByIds(ids);
         if (found.size() != ids.size()) {
-            throw new IllegalArgumentException("One or more users not found: " + ids);
+            throw new IllegalArgumentException(translationService.translateMessage("users.notFound", ids));
         }
 
-        for (User u : found) {
+        for (var u : found) {
             if (u.getAccount() == null || !u.getAccount().getId().equals(accountId)) {
-                throw new IllegalArgumentException("User " + u.getId() + " does not belong to this account.");
+                throw new IllegalArgumentException(translationService.translateMessage("user.accountMismatch", u.getId()));
             }
         }
         return new LinkedHashSet<>(found);
@@ -178,6 +197,8 @@ public class TransactionService {
         validateTransactionTypeAndInstallments(updated);
 
         return repository.findByIdAndAccountId(id, accountId).map(existing -> {
+            markAsEditedIfImported(existing);
+
             existing.setDate(updated.getDate());
             existing.setDescription(updated.getDescription());
             existing.setSimplifiedDescription(updated.getSimplifiedDescription());
@@ -193,15 +214,15 @@ public class TransactionService {
             }
 
             if (updated.getCreditCard() != null && updated.getCreditCard().getId() != null) {
-                CreditCard creditCard = creditCardRepository.findByIdAndAccountId(updated.getCreditCard().getId(), accountId)
-                        .orElseThrow(() -> new IllegalArgumentException("Credit card not found or does not belong to this account"));
+                var creditCard = creditCardRepository.findByIdAndAccountId(updated.getCreditCard().getId(), accountId)
+                        .orElseThrow(() -> new IllegalArgumentException(translationService.translateMessage("resource.creditCard.notFound")));
                 existing.setCreditCard(creditCard);
             } else {
                 existing.setCreditCard(null);
             }
 
             existing.setValue(updated.getValue());
-            existing.setResponsibles(resolveResponsiblesForAccount(updated.getResponsibles(), accountId));
+            existing.setResponsibleUsers(resolveResponsibleUsersForAccount(updated.getResponsibleUsers(), accountId));
 
             saveMappingIfNotExists(
                     updated.getDescription(),
@@ -209,8 +230,13 @@ public class TransactionService {
                     existing.getCategory(),
                     accountService.findById(accountId)
             );
-            return repository.save(existing);
-        }).orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
+
+            var saved = repository.save(existing);
+
+            refundDetectionService.detectAndLinkReversal(saved);
+
+            return saved;
+        }).orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id));
     }
 
     @Transactional(readOnly = true)
@@ -229,9 +255,69 @@ public class TransactionService {
 
     public void delete(Long id, Long accountId) {
         log.info("Deleting transaction ID: {}", id);
-        var tx = repository.findByIdAndAccountId(id, accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID " + id));
-        repository.delete(tx);
+        var transaction = repository.findByIdAndAccountId(id, accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id));
+        repository.delete(transaction);
+    }
+
+    @Transactional
+    public void bulkDelete(List<Long> transactionIds, Long accountId) {
+        log.info("Bulk deleting {} transactions for account {}", transactionIds.size(), accountId);
+
+        var transactions = transactionIds.stream()
+                .map(id -> repository.findByIdAndAccountId(id, accountId)
+                        .orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id)))
+                .toList();
+
+        repository.deleteAll(transactions);
+        log.info("Successfully deleted {} transactions", transactions.size());
+    }
+
+    @Transactional
+    public List<Transaction> bulkUpdateCategory(List<Long> transactionIds, Long categoryId, Long accountId) {
+        log.info("Bulk updating category to {} for {} transactions in account {}", categoryId, transactionIds.size(), accountId);
+
+        var category = categoryId != null ? categoryService.findById(categoryId, accountId) : null;
+
+        var transactions = transactionIds.stream()
+                .map(id -> repository.findByIdAndAccountId(id, accountId)
+                        .orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id)))
+                .peek(tx -> {
+                    markAsEditedIfImported(tx);
+                    tx.setCategory(category);
+                })
+                .toList();
+
+        var updated = repository.saveAll(transactions);
+        log.info("Successfully updated category for {} transactions", updated.size());
+        return updated;
+    }
+
+    @Transactional
+    public List<Transaction> bulkUpdateResponsibleUsers(List<Long> transactionIds, List<Long> responsibleUserIds, Long accountId) {
+        log.info("Bulk updating responsible users to {} for {} transactions in account {}", responsibleUserIds, transactionIds.size(), accountId);
+
+        var responsibleUsers = resolveResponsibleUsersForAccount(
+                responsibleUserIds.stream().map(id -> {
+                    var user = new User();
+                    user.setId(id);
+                    return user;
+                }).collect(Collectors.toSet()),
+                accountId
+        );
+
+        var transactions = transactionIds.stream()
+                .map(id -> repository.findByIdAndAccountId(id, accountId)
+                        .orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id)))
+                .peek(tx -> {
+                    markAsEditedIfImported(tx);
+                    tx.setResponsibleUsers(responsibleUsers);
+                })
+                .toList();
+
+        var updated = repository.saveAll(transactions);
+        log.info("Successfully updated responsible users for {} transactions", updated.size());
+        return updated;
     }
 
     private void saveMappingIfNotExists(String description, String simplified, Category category, Account account) {
@@ -265,25 +351,25 @@ public class TransactionService {
      */
     private void validateTransactionTypeAndInstallments(Transaction tx) {
         if (tx.getTransactionType() == null) {
-            throw new IllegalArgumentException("Transaction type is required");
+            throw new IllegalArgumentException(translationService.translateMessage("transaction.type.required"));
         }
 
-        if (tx.getTransactionType() == TransactionType.PARCELA) {
-            // When type is PARCELA, installment fields are required
+        if (tx.getTransactionType() == TransactionType.INSTALLMENT) {
+            // When type is INSTALLMENT, installment fields are required
             if (tx.getCurrentInstallment() == null) {
-                throw new IllegalArgumentException("Current installment is required for installment transactions");
+                throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.current.required"));
             }
             if (tx.getTotalInstallments() == null) {
-                throw new IllegalArgumentException("Total installments is required for installment transactions");
+                throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.total.required"));
             }
             if (tx.getCurrentInstallment() <= 0) {
-                throw new IllegalArgumentException("Current installment must be greater than zero");
+                throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.current.invalid"));
             }
             if (tx.getTotalInstallments() <= 0) {
-                throw new IllegalArgumentException("Total installments must be greater than zero");
+                throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.total.invalid"));
             }
             if (tx.getCurrentInstallment() > tx.getTotalInstallments()) {
-                throw new IllegalArgumentException("Current installment cannot be greater than total installments");
+                throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.current.exceeds"));
             }
         } else {
             // For EVENTUAL and RECORRENTE, installment fields should be null
@@ -293,6 +379,26 @@ public class TransactionService {
                 tx.setTotalInstallments(null);
                 tx.setInstallmentGroupId(null);
             }
+        }
+    }
+
+    private void initializeSourceTrackingFields(Transaction tx, TransactionSource source, String importBatchId) {
+        tx.setSource(source);
+        tx.setImportBatchId(importBatchId);
+        tx.setWasEditedAfterImport(false);
+        tx.setIsReversal(false);
+
+        if (tx.getChecksum() != null && tx.getOriginalChecksum() == null) {
+            tx.setOriginalChecksum(tx.getChecksum());
+        }
+
+        log.debug("Initialized source tracking: source={}, batchId={}", source, importBatchId);
+    }
+
+    private void markAsEditedIfImported(Transaction tx) {
+        if (tx.getSource() != TransactionSource.MANUAL && !Boolean.TRUE.equals(tx.getWasEditedAfterImport())) {
+            log.info("Marking transaction {} as edited after import", tx.getId());
+            tx.setWasEditedAfterImport(true);
         }
     }
 }

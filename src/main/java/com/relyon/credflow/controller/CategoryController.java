@@ -47,11 +47,13 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryResponseDTO>> getAllByAccount(
-            @AuthenticationPrincipal AuthenticatedUser user) {
+    public ResponseEntity<org.springframework.data.domain.Page<CategoryResponseDTO>> getAllByAccount(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-        log.info("GET all categories for account {}", user.getAccountId());
-        var response = service.findAllByAccountHierarchical(user.getAccountId());
+        log.info("GET all categories for account {} (page={}, size={})", user.getAccountId(), page, size);
+        var response = service.findAllByAccountHierarchical(user.getAccountId(), page, size);
         return ResponseEntity.ok(response);
     }
 

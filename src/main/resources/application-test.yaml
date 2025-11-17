@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:credflow_it;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;NON_KEYWORDS=VALUE,TRANSACTION
+    url: jdbc:h2:mem:credflow_it;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;NON_KEYWORDS=VALUE,TRANSACTION,USER
     driver-class-name: org.h2.Driver
     username: sa
     password: sa
@@ -10,8 +10,10 @@ spring:
       ddl-auto: create-drop
     properties:
       hibernate:
-        globally_quoted_identifiers: true   # <-- correct location
-    show-sql: false
+        globally_quoted_identifiers: true
+        format_sql: true
+    show-sql: true
+    defer-datasource-initialization: false
 
   mvc:
     locale: pt_BR

@@ -10,6 +10,8 @@ import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,13 +25,13 @@ public class CreditCardService {
     private final CreditCardMapper creditCardMapper;
     private final UserRepository userRepository;
     private final CreditCardBillingService billingService;
+    private final LocalizedMessageTranslationService translationService;
 
-    public List<CreditCardResponseDTO> findAll(Long accountId) {
-        log.info("Fetching all credit cards for account {}", accountId);
-        List<CreditCard> creditCards = creditCardRepository.findAllByAccountId(accountId);
-        return creditCards.stream()
-                .map(this::mapToDTO)
-                .toList();
+    public Page<CreditCardResponseDTO> findAll(Long accountId, int page, int size) {
+        log.info("Fetching credit cards for account {} (page={}, size={})", accountId, page, size);
+        var pageable = PageRequest.of(page, size);
+        var creditCards = creditCardRepository.findAllByAccountId(accountId, pageable);
+        return creditCards.map(this::mapToDTO);
     }
 
     public CreditCardResponseDTO findById(Long id, Long accountId) {
@@ -42,7 +44,7 @@ public class CreditCardService {
         log.info("Creating credit card for account {} with holder {}", accountId, holderId);
 
         User holder = userRepository.findByIdAndAccountId(holderId, accountId)
-                .orElseThrow(() -> new IllegalArgumentException("Holder not found or does not belong to this account"));
+                .orElseThrow(() -> new IllegalArgumentException(translationService.translateMessage("creditCard.holderNotFound")));
 
         creditCard.setAccount(Account.builder().id(accountId).build());
         creditCard.setHolder(holder);
@@ -50,6 +52,9 @@ public class CreditCardService {
     }
 
     private CreditCardResponseDTO mapToDTO(CreditCard entity) {
+        if (entity == null) {
+            return null;
+        }
         CreditCardResponseDTO dto = creditCardMapper.toDTO(entity);
         dto.setAvailableCreditLimit(billingService.computeAvailableLimit(dto.getId()));
         dto.setCurrentBill(billingService.computeCurrentBill(dto.getId(), entity.getClosingDay(), entity.getDueDay()));

@@ -3,6 +3,7 @@ package com.relyon.credflow.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.relyon.credflow.model.transaction.TransactionRequestDTO;
+import com.relyon.credflow.model.transaction.TransactionType;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +46,7 @@ class TransactionControllerIT {
         req.setSimplifiedDescription("Energy");
         req.setCategoryId(catId);
         req.setValue(new BigDecimal("123.45"));
+        req.setTransactionType(TransactionType.ONE_TIME);
 
         var res = mvc.perform(post("/v1/transactions")
                         .header("Authorization", ctx.bearer())
@@ -88,6 +91,7 @@ class TransactionControllerIT {
         patch.setSimplifiedDescription("Energy");
         patch.setCategoryId(catId);
         patch.setValue(new BigDecimal("77.77"));
+        patch.setTransactionType(TransactionType.ONE_TIME);
 
         mvc.perform(put("/v1/transactions/{id}", id)
                         .header("Authorization", ctx.bearer())
@@ -125,15 +129,20 @@ class TransactionControllerIT {
         createTx(ctx.bearer(), "Supermarket XYZ", "Groceries", food, "250.00", LocalDate.of(2024, 5, 12));
         createTx(ctx.bearer(), "Electricity May", "Energy", bills, "300.00", LocalDate.of(2024, 5, 15));
 
-        mvc.perform(get("/v1/transactions")
+        var filter = Map.of(
+                "fromDate", "2024-05-01",
+                "toDate", "2024-05-31",
+                "descriptionContains", "market",
+                "simplifiedContains", "grocer",
+                "minAmount", "150",
+                "maxAmount", "300",
+                "categoryIds", List.of(food)
+        );
+
+        mvc.perform(post("/v1/transactions/search")
                         .header("Authorization", ctx.bearer())
-                        .param("startDate", "2024-05-01")
-                        .param("endDate", "2024-05-31")
-                        .param("description", "market")
-                        .param("simplified", "grocer")
-                        .param("minValue", "150")
-                        .param("maxValue", "300")
-                        .param("categoryIds", food.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(filter)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", Matchers.hasSize(1)))
                 .andExpect(jsonPath("$[0].description").value("Supermarket XYZ"))
@@ -153,16 +162,18 @@ class TransactionControllerIT {
                         .header("Authorization", intruder.bearer()))
                 .andExpect(status().isNotFound());
 
+        var hackReq = new TransactionRequestDTO();
+        hackReq.setDate(LocalDate.of(2024, 6, 2));
+        hackReq.setDescription("Hack");
+        hackReq.setSimplifiedDescription("Hack");
+        hackReq.setCategoryId(catId);
+        hackReq.setValue(new BigDecimal("1.00"));
+        hackReq.setTransactionType(TransactionType.ONE_TIME);
+
         mvc.perform(put("/v1/transactions/{id}", id)
                         .header("Authorization", intruder.bearer())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(om.writeValueAsString(Map.of(
-                                "date", "2024-06-02",
-                                "description", "Hack",
-                                "simplifiedDescription", "Hack",
-                                "categoryId", catId,
-                                "value", 1.00
-                        ))))
+                        .content(om.writeValueAsString(hackReq)))
                 .andExpect(status().isNotFound());
 
         mvc.perform(delete("/v1/transactions/{id}", id)
@@ -181,7 +192,7 @@ class TransactionControllerIT {
                   "simplifiedDescription": "x",
                   "categoryId": null,
                   "value": null,
-                  "responsibles": null
+                  "responsibleUsers": null
                 }
                 """;
 
@@ -248,6 +259,7 @@ class TransactionControllerIT {
         req.setSimplifiedDescription(simp);
         req.setCategoryId(categoryId);
         req.setValue(new BigDecimal(value));
+        req.setTransactionType(TransactionType.ONE_TIME);
 
         var res = mvc.perform(post("/v1/transactions")
                         .header("Authorization", bearer)
@@ -260,5 +272,114 @@ class TransactionControllerIT {
 
     private JsonNode read(org.springframework.test.web.servlet.MvcResult r) throws Exception {
         return om.readTree(r.getResponse().getContentAsString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void bulkDelete_deletesMultipleTransactionsSuccessfully() throws Exception {
+        var ctx = registerAndLogin("bulk_delete");
+        var catId = createCategory("Test", ctx.bearer());
+
+        var id1 = createTx(ctx.bearer(), "Tx 1", "Test", catId, "10.00", LocalDate.of(2024, 7, 1));
+        var id2 = createTx(ctx.bearer(), "Tx 2", "Test", catId, "20.00", LocalDate.of(2024, 7, 2));
+        var id3 = createTx(ctx.bearer(), "Tx 3", "Test", catId, "30.00", LocalDate.of(2024, 7, 3));
+
+        mvc.perform(delete("/v1/transactions")
+                        .header("Authorization", ctx.bearer())
+                        .param("ids", id1.toString(), id2.toString(), id3.toString()))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/v1/transactions/{id}", id1)
+                        .header("Authorization", ctx.bearer()))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/v1/transactions/{id}", id2)
+                        .header("Authorization", ctx.bearer()))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/v1/transactions/{id}", id3)
+                        .header("Authorization", ctx.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void bulkUpdateCategory_updatesAllTransactionsSuccessfully() throws Exception {
+        var ctx = registerAndLogin("bulk_category");
+        var oldCat = createCategory("Old Category", ctx.bearer());
+        var newCat = createCategory("New Category", ctx.bearer());
+
+        var id1 = createTx(ctx.bearer(), "Tx 1", "Test", oldCat, "10.00", LocalDate.of(2024, 8, 1));
+        var id2 = createTx(ctx.bearer(), "Tx 2", "Test", oldCat, "20.00", LocalDate.of(2024, 8, 2));
+
+        mvc.perform(put("/v1/transactions/category")
+                        .header("Authorization", ctx.bearer())
+                        .param("ids", id1.toString(), id2.toString())
+                        .param("categoryId", newCat.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$[0].category").value("New Category"))
+                .andExpect(jsonPath("$[1].category").value("New Category"));
+    }
+
+    @Test
+    void bulkUpdateCategory_withNullCategory_removesCategory() throws Exception {
+        var ctx = registerAndLogin("bulk_null_cat");
+        var catId = createCategory("Category", ctx.bearer());
+
+        var id1 = createTx(ctx.bearer(), "Tx 1", "Test", catId, "10.00", LocalDate.of(2024, 9, 1));
+
+        mvc.perform(put("/v1/transactions/category")
+                        .header("Authorization", ctx.bearer())
+                        .param("ids", id1.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].category").doesNotExist());
+    }
+
+    @Test
+    void bulkUpdateResponsibles_updatesAllTransactionsSuccessfully() throws Exception {
+        var ctx = registerAndLogin("bulk_resp");
+        var catId = createCategory("Test", ctx.bearer());
+
+        var id1 = createTx(ctx.bearer(), "Tx 1", "Test", catId, "10.00", LocalDate.of(2024, 10, 1));
+        var id2 = createTx(ctx.bearer(), "Tx 2", "Test", catId, "20.00", LocalDate.of(2024, 10, 2));
+
+        var userRes = mvc.perform(get("/v1/users/select")
+                        .header("Authorization", ctx.bearer()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        var users = om.readTree(userRes.getResponse().getContentAsString(StandardCharsets.UTF_8));
+        var userId = users.get(0).get("id").asText();
+
+        mvc.perform(put("/v1/transactions/responsible-users")
+                        .header("Authorization", ctx.bearer())
+                        .param("ids", id1.toString(), id2.toString())
+                        .param("responsibleUserIds", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$[0].responsibleUsers", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[1].responsibleUsers", Matchers.hasSize(1)));
+    }
+
+    @Test
+    void create_setsSourceToManualAndCallsRefundDetection() throws Exception {
+        var ctx = registerAndLogin("source_manual");
+        var catId = createCategory("Test", ctx.bearer());
+
+        var req = new TransactionRequestDTO();
+        req.setDate(LocalDate.of(2024, 12, 1));
+        req.setDescription("Test Transaction");
+        req.setCategoryId(catId);
+        req.setValue(new BigDecimal("50.00"));
+        req.setTransactionType(TransactionType.ONE_TIME);
+
+        mvc.perform(post("/v1/transactions")
+                        .header("Authorization", ctx.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("MANUAL"))
+                .andExpect(jsonPath("$.wasEditedAfterImport").value(false))
+                .andExpect(jsonPath("$.isReversal").value(false));
     }
 }

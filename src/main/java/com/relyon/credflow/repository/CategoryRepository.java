@@ -1,6 +1,8 @@
 package com.relyon.credflow.repository;
 
 import com.relyon.credflow.model.category.Category;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,6 +12,9 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     @EntityGraph(attributePaths = {"defaultResponsibles", "parentCategory"})
     List<Category> findAllByAccountId(Long accountId);
+
+    @EntityGraph(attributePaths = {"defaultResponsibles", "parentCategory"})
+    Page<Category> findAllByAccountId(Long accountId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"defaultResponsibles", "parentCategory"})
     Optional<Category> findByIdAndAccountId(Long id, Long accountId);

@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
+@Table(name = "transaction")
 @EqualsAndHashCode(callSuper = true)
 @Data
 @SuperBuilder
@@ -25,13 +26,13 @@ import java.util.Set;
 @AllArgsConstructor
 public class Transaction extends BaseEntity {
 
-    public Transaction(LocalDate date, String description, String simplifiedDescription, Category category, BigDecimal value, Set<User> responsibles) {
+    public Transaction(LocalDate date, String description, String simplifiedDescription, Category category, BigDecimal value, Set<User> responsibleUsers) {
         this.date = date;
         this.description = description;
         this.simplifiedDescription = simplifiedDescription;
         this.category = category;
         this.value = value;
-        this.responsibles = responsibles;
+        this.responsibleUsers = responsibleUsers;
     }
 
     private LocalDate date;
@@ -48,7 +49,7 @@ public class Transaction extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "user_id"),
             uniqueConstraints = @UniqueConstraint(columnNames = {"transaction_id", "user_id"})
     )
-    private Set<User> responsibles = new HashSet<>();
+    private Set<User> responsibleUsers = new HashSet<>();
     @Column(name = "checksum", unique = true)
     private String checksum;
     @ManyToOne(optional = false)
@@ -58,8 +59,8 @@ public class Transaction extends BaseEntity {
     private CreditCard creditCard;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(255) default 'EVENTUAL'")
-    private TransactionType transactionType;
+    @Column(nullable = false)
+    private TransactionType transactionType = TransactionType.ONE_TIME;
 
     private Integer currentInstallment;
 
@@ -67,4 +68,24 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "installment_group_id")
     private String installmentGroupId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionSource source = TransactionSource.MANUAL;
+
+    @Column(name = "import_batch_id")
+    private String importBatchId;
+
+    @Column(name = "was_edited_after_import", nullable = false)
+    private Boolean wasEditedAfterImport = false;
+
+    @Column(name = "original_checksum")
+    private String originalChecksum;
+
+    @Column(name = "is_reversal", nullable = false)
+    private Boolean isReversal = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "related_transaction_id")
+    private Transaction relatedTransaction;
 }

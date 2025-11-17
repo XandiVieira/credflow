@@ -6,6 +6,8 @@ import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.utils.NormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +22,7 @@ public class DescriptionMappingService {
     private final TransactionService transactionService;
     private final AccountService accountService;
     private final CategoryService categoryService;
+    private final LocalizedMessageTranslationService translationService;
 
     public List<DescriptionMapping> createAll(List<DescriptionMapping> mappings, Long accountId) {
         log.info("Creating {} description mappings for account {}", mappings.size(), accountId);
@@ -49,20 +52,18 @@ public class DescriptionMappingService {
                 .orElseThrow(() -> notFound(id));
     }
 
-    public List<DescriptionMapping> findAll(Long accountId, Boolean onlyIncomplete) {
-        log.info("Fetching {} description mappings for account {}",
+    public Page<DescriptionMapping> findAll(Long accountId, Boolean onlyIncomplete, int page, int size) {
+        log.info("Fetching {} description mappings for account {} (page={}, size={})",
                 Boolean.TRUE.equals(onlyIncomplete) ? "incomplete" : "all",
-                accountId);
+                accountId, page, size);
 
-        var allMappings = repository.findAllByAccountId(accountId);
+        var pageable = PageRequest.of(page, size);
 
         if (Boolean.TRUE.equals(onlyIncomplete)) {
-            return allMappings.stream()
-                    .filter(DescriptionMapping::isIncomplete)
-                    .toList();
+            return repository.findAllByAccountIdAndCategoryIsNull(accountId, pageable);
         }
 
-        return allMappings;
+        return repository.findAllByAccountId(accountId, pageable);
     }
 
 
@@ -134,6 +135,6 @@ public class DescriptionMappingService {
 
     private ResourceNotFoundException notFound(Long id) {
         log.error("Mapping not found with ID {}", id);
-        return new ResourceNotFoundException("Mapping not found with ID " + id);
+        return new ResourceNotFoundException("resource.mapping.notFound", id);
     }
 }

@@ -77,8 +77,8 @@ class UserControllerIT {
                         .header("Authorization", ctx.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", Matchers.hasSize(Matchers.greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$..email", Matchers.hasItem(ctx.email())));
+                .andExpect(jsonPath("$.content", Matchers.hasSize(Matchers.greaterThanOrEqualTo(1))))
+                .andExpect(jsonPath("$.content..email", Matchers.hasItem(ctx.email())));
     }
 
     @Test

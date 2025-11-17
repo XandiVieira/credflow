@@ -15,12 +15,17 @@ public class TransactionResponseDTO {
     private String category;
     private BigDecimal value;
     private Long accountId;
-    private List<Long> responsibles;
+    private List<Long> responsibleUsers;
     private CreditCardDTO creditCard;
     private TransactionType transactionType;
     private Integer currentInstallment;
     private Integer totalInstallments;
     private String installmentGroupId;
+    private TransactionSource source;
+    private String importBatchId;
+    private Boolean wasEditedAfterImport;
+    private Boolean isReversal;
+    private Long relatedTransactionId;
 
     @Data
     public static class CreditCardDTO {

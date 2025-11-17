@@ -34,6 +34,9 @@ class DescriptionMappingServiceTest {
     @Mock
     private CategoryService categoryService;
 
+    @Mock
+    private LocalizedMessageTranslationService translationService;
+
     @InjectMocks
     private DescriptionMappingService service;
 
@@ -215,39 +218,44 @@ class DescriptionMappingServiceTest {
     @Test
     void findAll_whenOnlyIncompleteTrue_filtersByIsIncomplete() {
         var accountId = 10L;
+        var page = 0;
+        var size = 20;
 
-        var incomplete = mock(DescriptionMapping.class);
-        when(incomplete.isIncomplete()).thenReturn(true);
+        var incomplete = new DescriptionMapping();
+        var pageResult = new org.springframework.data.domain.PageImpl<>(List.of(incomplete));
 
-        var complete = mock(DescriptionMapping.class);
-        when(complete.isIncomplete()).thenReturn(false);
+        when(repository.findAllByAccountIdAndCategoryIsNull(eq(accountId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(pageResult);
 
-        when(repository.findAllByAccountId(accountId)).thenReturn(List.of(incomplete, complete));
+        var result = service.findAll(accountId, true, page, size);
 
-        var result = service.findAll(accountId, true);
+        assertEquals(1, result.getContent().size());
+        assertSame(incomplete, result.getContent().getFirst());
 
-        assertEquals(1, result.size());
-        assertSame(incomplete, result.getFirst());
-
-        verify(repository, times(1)).findAllByAccountId(accountId);
+        verify(repository, times(1)).findAllByAccountIdAndCategoryIsNull(eq(accountId), any(org.springframework.data.domain.Pageable.class));
         verifyNoMoreInteractions(repository, accountService, transactionService);
     }
 
     @Test
     void findAll_whenOnlyIncompleteFalse_returnsAll() {
         var accountId = 10L;
+        var page = 0;
+        var size = 20;
         var m1 = new DescriptionMapping();
         var m2 = new DescriptionMapping();
 
-        when(repository.findAllByAccountId(accountId)).thenReturn(List.of(m1, m2));
+        var pageResult = new org.springframework.data.domain.PageImpl<>(List.of(m1, m2));
 
-        var result = service.findAll(accountId, false);
+        when(repository.findAllByAccountId(eq(accountId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(pageResult);
 
-        assertEquals(2, result.size());
-        assertSame(m1, result.get(0));
-        assertSame(m2, result.get(1));
+        var result = service.findAll(accountId, false, page, size);
 
-        verify(repository, times(1)).findAllByAccountId(accountId);
+        assertEquals(2, result.getContent().size());
+        assertSame(m1, result.getContent().getFirst());
+        assertSame(m2, result.getContent().get(1));
+
+        verify(repository, times(1)).findAllByAccountId(eq(accountId), any(org.springframework.data.domain.Pageable.class));
         verifyNoMoreInteractions(repository, accountService, transactionService);
     }
 

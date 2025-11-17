@@ -9,6 +9,8 @@ import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final AccountService accountService;
     private final PasswordEncoder passwordEncoder;
+    private final LocalizedMessageTranslationService translationService;
 
     @Transactional
     public User create(UserRequestDTO dto) {
@@ -46,14 +49,15 @@ public class UserService {
             return saved;
         } catch (DataIntegrityViolationException ex) {
             log.warn("Email {} already exists", dto.getEmail());
-            throw new ResourceAlreadyExistsException("Email already exists: " + dto.getEmail());
+            throw new ResourceAlreadyExistsException("user.emailAlreadyExists", dto.getEmail());
         }
     }
 
-    public List<User> findAll() {
-        log.info("Fetching all users");
-        var users = userRepository.findAll();
-        log.info("Found {} users", users.size());
+    public Page<User> findAll(int page, int size) {
+        log.info("Fetching users (page={}, size={})", page, size);
+        var pageable = PageRequest.of(page, size);
+        var users = userRepository.findAll(pageable);
+        log.info("Found {} users", users.getTotalElements());
         return users;
     }
 
@@ -71,7 +75,7 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("User not found with ID {}", id);
-                    return new ResourceNotFoundException("User not found with ID " + id);
+                    return new ResourceNotFoundException("resource.user.notFound", id);
                 });
     }
 
@@ -88,7 +92,7 @@ public class UserService {
                 })
                 .orElseThrow(() -> {
                     log.warn("User not found with ID {}", id);
-                    return new ResourceNotFoundException("User not found with ID " + id);
+                    return new ResourceNotFoundException("resource.user.notFound", id);
                 });
     }
 
@@ -96,7 +100,7 @@ public class UserService {
         log.info("Deleting user with ID {}", id);
         if (!userRepository.existsById(id)) {
             log.warn("User not found with ID {}", id);
-            throw new ResourceNotFoundException("User not found with ID " + id);
+            throw new ResourceNotFoundException("resource.user.notFound", id);
         }
         userRepository.deleteById(id);
         log.info("User with ID {} successfully deleted", id);
@@ -107,7 +111,7 @@ public class UserService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.warn("User not found with email {}", email);
-                    return new ResourceNotFoundException("User not found with email " + email);
+                    return new ResourceNotFoundException("resource.user.notFoundByEmail", email);
                 });
     }
 

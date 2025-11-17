@@ -10,6 +10,9 @@ import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,7 @@ public class CategoryService {
     private final AccountService accountService;
     private final UserService userService;
     private final CategoryMapper categoryMapper;
+    private final LocalizedMessageTranslationService translationService;
 
     public List<Category> findAll(Long accountId) {
         log.info("Fetching all categories for account {}", accountId);
@@ -37,7 +41,7 @@ public class CategoryService {
     public Category findById(Long id, Long accountId) {
         log.info("Fetching category ID {} for account {}", id, accountId);
         return repository.findByIdAndAccountId(id, accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("resource.category.notFound", id));
     }
 
     @Transactional
@@ -46,9 +50,7 @@ public class CategoryService {
         var normalized = name.toLowerCase();
 
         if (repository.findByNameIgnoreCaseAndAccountId(normalized, accountId).isPresent()) {
-            throw new ResourceAlreadyExistsException(
-                    "Category with name '" + name + "' already exists for this account."
-            );
+            throw new ResourceAlreadyExistsException("category.duplicate", name);
         }
 
         var account = accountService.findById(accountId);
@@ -80,9 +82,7 @@ public class CategoryService {
         for (Long id : ids) {
             var u = userService.findById(id);
             if (!u.getAccount().getId().equals(accountId)) {
-                throw new IllegalArgumentException(
-                        "User " + id + " does not belong to this account."
-                );
+                throw new IllegalArgumentException(translationService.translateMessage("user.accountMismatch", id));
             }
             users.add(u);
         }
@@ -93,7 +93,7 @@ public class CategoryService {
     public Category update(Long id, Category updated, Long accountId) {
         var newName = updated.getName() != null ? updated.getName().trim() : "";
         if (newName.isBlank()) {
-            throw new IllegalArgumentException("Category name cannot be blank.");
+            throw new IllegalArgumentException(translationService.translateMessage("category.nameBlank"));
         }
 
         log.info("Updating category ID {} for accountId {}", id, accountId);
@@ -101,11 +101,11 @@ public class CategoryService {
         repository.findByNameIgnoreCaseAndAccountId(newName.toLowerCase(), accountId)
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(_ -> {
-                    throw new ResourceAlreadyExistsException("A category with name '" + newName + "' already exists.");
+                    throw new ResourceAlreadyExistsException("category.duplicate", newName);
                 });
 
         var category = repository.findByIdAndAccountId(id, accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("resource.category.notFound", id));
 
         category.setName(newName);
         category.setAccount(accountService.findById(accountId));
@@ -136,14 +136,14 @@ public class CategoryService {
         log.info("Deleting category ID {} for account {}", id, accountId);
 
         var category = repository.findByIdAndAccountId(id, accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("resource.category.notFound", id));
 
         repository.delete(category);
         log.info("Category ID {} deleted", id);
     }
 
-    public List<CategoryResponseDTO> findAllByAccountHierarchical(Long accountId) {
-        log.info("Fetching all categories hierarchically for account {}", accountId);
+    public Page<CategoryResponseDTO> findAllByAccountHierarchical(Long accountId, int page, int size) {
+        log.info("Fetching categories hierarchically for account {} (page={}, size={})", accountId, page, size);
 
         var allCategories = repository.findAllByAccountId(accountId);
 
@@ -155,13 +155,23 @@ public class CategoryService {
                 .filter(dto -> dto.getParentCategoryId() != null)
                 .collect(Collectors.groupingBy(CategoryResponseDTO::getParentCategoryId));
 
-        return allDtos.stream()
+        var parentCategories = allDtos.stream()
                 .filter(dto -> dto.getParentCategoryId() == null)
                 .peek(parent -> {
                     List<CategoryResponseDTO> children = childrenByParentId.getOrDefault(parent.getId(), new ArrayList<>());
                     parent.setChildCategories(children);
                 })
-                .collect(Collectors.toList());
+                .toList();
+
+        var start = page * size;
+        var end = Math.min(start + size, parentCategories.size());
+
+        if (start > parentCategories.size()) {
+            return new PageImpl<>(List.of(), PageRequest.of(page, size), parentCategories.size());
+        }
+
+        var pageContent = parentCategories.subList(start, end);
+        return new PageImpl<>(pageContent, PageRequest.of(page, size), parentCategories.size());
     }
 
     public List<CategorySelectDTO> findAllSelectByAccount(Long accountId) {
@@ -177,13 +187,11 @@ public class CategoryService {
 
     private Category validateAndResolveParentCategory(Long parentId, Long accountId, Long currentCategoryId) {
         if (parentId.equals(currentCategoryId)) {
-            throw new IllegalArgumentException("A category cannot be its own parent.");
+            throw new IllegalArgumentException(translationService.translateMessage("category.selfParent"));
         }
 
         var parentCategory = repository.findByIdAndAccountId(parentId, accountId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Parent category with ID " + parentId + " not found."
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("category.parentNotFound", parentId));
 
         if (parentCategory.getParentCategory() != null) {
             throw new IllegalArgumentException(

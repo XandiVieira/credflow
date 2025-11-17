@@ -116,8 +116,8 @@ class CategoryControllerIT {
         mvc.perform(get("/v1/categories")
                         .header("Authorization", ctx.bearer()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", Matchers.hasSize(Matchers.greaterThanOrEqualTo(2))))
-                .andExpect(jsonPath("$..name", Matchers.hasItems("Bills", "Leisure")));
+                .andExpect(jsonPath("$.content", Matchers.hasSize(Matchers.greaterThanOrEqualTo(2))))
+                .andExpect(jsonPath("$.content..name", Matchers.hasItems("Bills", "Leisure")));
     }
 
     @Test

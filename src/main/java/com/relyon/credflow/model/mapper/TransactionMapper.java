@@ -23,17 +23,24 @@ public interface TransactionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "category", source = "categoryId", qualifiedByName = "idToCategory")
-    @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "idsToUsers")
+    @Mapping(target = "responsibleUsers", source = "responsibleUsers", qualifiedByName = "idsToUsers")
     @Mapping(target = "creditCard", ignore = true)
+    @Mapping(target = "source", ignore = true)
+    @Mapping(target = "importBatchId", ignore = true)
+    @Mapping(target = "wasEditedAfterImport", ignore = true)
+    @Mapping(target = "originalChecksum", ignore = true)
+    @Mapping(target = "isReversal", ignore = true)
+    @Mapping(target = "relatedTransaction", ignore = true)
     Transaction toEntity(TransactionRequestDTO dto);
 
     @Mapping(target = "accountId", source = "account.id")
-    @Mapping(target = "responsibles", source = "responsibles", qualifiedByName = "usersToIds")
+    @Mapping(target = "responsibleUsers", source = "responsibleUsers", qualifiedByName = "usersToIds")
     @Mapping(target = "category", source = "category", qualifiedByName = "categoryToName")
     @Mapping(target = "creditCard.id", source = "creditCard.id")
     @Mapping(target = "creditCard.nickname", source = "creditCard.nickname")
     @Mapping(target = "creditCard.brand", source = "creditCard.brand")
     @Mapping(target = "creditCard.lastFourDigits", source = "creditCard.lastFourDigits")
+    @Mapping(target = "relatedTransactionId", source = "relatedTransaction.id")
     TransactionResponseDTO toDto(Transaction entity);
 
     @Named("categoryToName")

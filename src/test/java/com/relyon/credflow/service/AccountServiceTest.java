@@ -89,7 +89,7 @@ class AccountServiceTest {
         when(accountRepository.findById(id)).thenReturn(Optional.empty());
 
         var ex = assertThrows(ResourceNotFoundException.class, () -> accountService.findById(id));
-        assertTrue(ex.getMessage().contains("Account not found with ID " + id));
+        assertEquals("resource.account.notFound", ex.getMessage());
 
         verify(accountRepository, times(1)).findById(id);
         verifyNoMoreInteractions(accountRepository);
@@ -309,7 +309,7 @@ class AccountServiceTest {
         when(accountRepository.findById(id)).thenReturn(Optional.empty());
 
         var ex = assertThrows(ResourceNotFoundException.class, () -> accountService.update(id, patch));
-        assertTrue(ex.getMessage().contains("Account not found with ID " + id));
+        assertEquals("resource.account.notFound", ex.getMessage());
 
         verify(accountRepository, times(1)).findById(id);
         verify(accountRepository, never()).save(any());
@@ -369,7 +369,7 @@ class AccountServiceTest {
         when(accountRepository.existsById(id)).thenReturn(false);
 
         var ex = assertThrows(ResourceNotFoundException.class, () -> accountService.delete(id));
-        assertTrue(ex.getMessage().contains("Account not found with ID " + id));
+        assertEquals("resource.account.notFound", ex.getMessage());
 
         verify(accountRepository, times(1)).existsById(id);
         verify(accountRepository, never()).deleteById(anyLong());

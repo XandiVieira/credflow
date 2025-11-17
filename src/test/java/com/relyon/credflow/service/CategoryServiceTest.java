@@ -4,6 +4,7 @@ import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
+import com.relyon.credflow.model.mapper.CategoryMapper;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,12 @@ class CategoryServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private LocalizedMessageTranslationService translationService;
+
+    @Mock
+    private CategoryMapper categoryMapper;
 
     @InjectMocks
     private CategoryService service;
@@ -91,10 +98,8 @@ class CategoryServiceTest {
 
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.empty());
 
-        var ex = assertThrows(ResourceNotFoundException.class,
+        assertThrows(ResourceNotFoundException.class,
                 () -> service.findById(id, accountId));
-
-        assertTrue(ex.getMessage().contains("Category with ID " + id + " not found."));
 
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);
         verifyNoMoreInteractions(repository, accountService);
@@ -139,8 +144,7 @@ class CategoryServiceTest {
         when(repository.findByNameIgnoreCaseAndAccountId("food", accountId))
                 .thenReturn(Optional.of(new Category()));
 
-        var ex = assertThrows(ResourceAlreadyExistsException.class, () -> service.create(input, accountId));
-        assertTrue(ex.getMessage().toLowerCase().contains("already exists"));
+        assertThrows(ResourceAlreadyExistsException.class, () -> service.create(input, accountId));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("food", accountId);
         verify(accountService, never()).findById(anyLong());
@@ -283,8 +287,7 @@ class CategoryServiceTest {
         when(repository.findByNameIgnoreCaseAndAccountId("bills", accountId))
                 .thenReturn(Optional.of(conflicting));
 
-        var ex = assertThrows(ResourceAlreadyExistsException.class, () -> service.update(id, updated, accountId));
-        assertTrue(ex.getMessage().toLowerCase().contains("already exists"));
+        assertThrows(ResourceAlreadyExistsException.class, () -> service.update(id, updated, accountId));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("bills", accountId);
         verify(repository, never()).findByIdAndAccountId(anyLong(), anyLong());
@@ -304,8 +307,7 @@ class CategoryServiceTest {
         when(repository.findByNameIgnoreCaseAndAccountId("travel", accountId)).thenReturn(Optional.empty());
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.empty());
 
-        var ex = assertThrows(ResourceNotFoundException.class, () -> service.update(id, updated, accountId));
-        assertTrue(ex.getMessage().toLowerCase().contains("not found"));
+        assertThrows(ResourceNotFoundException.class, () -> service.update(id, updated, accountId));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("travel", accountId);
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);
@@ -339,8 +341,7 @@ class CategoryServiceTest {
 
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.empty());
 
-        var ex = assertThrows(ResourceNotFoundException.class, () -> service.delete(id, accountId));
-        assertTrue(ex.getMessage().toLowerCase().contains("not found"));
+        assertThrows(ResourceNotFoundException.class, () -> service.delete(id, accountId));
 
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);
         verify(repository, never()).delete(any());
@@ -407,8 +408,7 @@ class CategoryServiceTest {
         when(accountService.findById(accountId)).thenReturn(account);
         when(repository.findByIdAndAccountId(parentId, accountId)).thenReturn(Optional.empty());
 
-        var ex = assertThrows(ResourceNotFoundException.class, () -> service.create(input, accountId));
-        assertTrue(ex.getMessage().contains("Parent category"));
+        assertThrows(ResourceNotFoundException.class, () -> service.create(input, accountId));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("eventos", accountId);
         verify(accountService, times(1)).findById(accountId);
@@ -507,7 +507,7 @@ class CategoryServiceTest {
         updated.setName("Eventos");
 
         var parentStub = new Category();
-        parentStub.setId(id); // mesma categoria
+        parentStub.setId(id);
         updated.setParentCategory(parentStub);
 
         var existing = new Category();
@@ -520,9 +520,9 @@ class CategoryServiceTest {
         when(repository.findByNameIgnoreCaseAndAccountId("eventos", accountId)).thenReturn(Optional.empty());
         when(repository.findByIdAndAccountId(id, accountId)).thenReturn(Optional.of(existing));
         when(accountService.findById(accountId)).thenReturn(account);
+        when(translationService.translateMessage("category.selfParent")).thenReturn("Category cannot be its own parent");
 
-        var ex = assertThrows(IllegalArgumentException.class, () -> service.update(id, updated, accountId));
-        assertTrue(ex.getMessage().contains("cannot be its own parent"));
+        assertThrows(IllegalArgumentException.class, () -> service.update(id, updated, accountId));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("eventos", accountId);
         verify(repository, times(1)).findByIdAndAccountId(id, accountId);

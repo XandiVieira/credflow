@@ -114,17 +114,21 @@ class UserServiceTest {
     }*/
 
     @Test
-    void findAll_returnsRepositoryList() {
+    void findAll_returnsRepositoryPage() {
         var u1 = new User();
         var u2 = new User();
-        when(userRepository.findAll()).thenReturn(List.of(u1, u2));
+        var page = 0;
+        var size = 20;
 
-        var res = service.findAll();
+        when(userRepository.findAll(any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(u1, u2)));
 
-        assertEquals(2, res.size());
-        assertSame(u1, res.get(0));
-        assertSame(u2, res.get(1));
-        verify(userRepository, times(1)).findAll();
+        var res = service.findAll(page, size);
+
+        assertEquals(2, res.getContent().size());
+        assertSame(u1, res.getContent().getFirst());
+        assertSame(u2, res.getContent().get(1));
+        verify(userRepository, times(1)).findAll(any(org.springframework.data.domain.Pageable.class));
         verifyNoMoreInteractions(userRepository, accountService, passwordEncoder);
     }
 

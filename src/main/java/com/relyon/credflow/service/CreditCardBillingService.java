@@ -21,17 +21,18 @@ public class CreditCardBillingService {
 
     private final TransactionService transactionService;
     private final CreditCardRepository creditCardRepository;
+    private final LocalizedMessageTranslationService translationService;
 
     public BigDecimal computeAvailableLimit(Long creditCardId) {
         log.info("Computing available limit for credit card {}", creditCardId);
 
-        CreditCard creditCard = creditCardRepository.findById(creditCardId)
-                .orElseThrow(() -> new IllegalArgumentException("Credit card not found"));
+        var creditCard = creditCardRepository.findById(creditCardId)
+                .orElseThrow(() -> new IllegalArgumentException(translationService.translateMessage("creditCard.notFound")));
 
-        LocalDate billingCycleStartDate = calculateBillingCycleStartDate(creditCard.getClosingDay());
+        var billingCycleStartDate = calculateBillingCycleStartDate(creditCard.getClosingDay());
         log.info("Billing cycle start date for card {}: {}", creditCardId, billingCycleStartDate);
 
-        TransactionFilter filter = new TransactionFilter(
+        var filter = new TransactionFilter(
                 null,
                 billingCycleStartDate,
                 null,
@@ -41,18 +42,19 @@ public class CreditCardBillingService {
                 null,
                 null,
                 null,
-                List.of(creditCardId)
+                List.of(creditCardId),
+                true
         );
 
-        List<Transaction> transactions = transactionService.search(filter, null);
+        var transactions = transactionService.search(filter, null);
 
-        BigDecimal totalSpent = transactions.stream()
+        var totalSpent = transactions.stream()
                 .map(Transaction::getValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         log.info("Total spent in current billing cycle for card {}: {}", creditCardId, totalSpent);
 
-        BigDecimal availableLimit = creditCard.getCreditLimit().subtract(totalSpent);
+        var availableLimit = creditCard.getCreditLimit().subtract(totalSpent);
         log.info("Available limit for card {}: {}", creditCardId, availableLimit);
 
         return availableLimit;
@@ -61,11 +63,11 @@ public class CreditCardBillingService {
     public CreditCardResponseDTO.CurrentBillDTO computeCurrentBill(Long creditCardId, Integer closingDay, Integer dueDay) {
         log.info("Computing current bill for credit card {}", creditCardId);
 
-        LocalDate cycleStartDate = calculateBillingCycleStartDate(closingDay);
-        LocalDate cycleClosingDate = calculateBillingCycleClosingDate(closingDay);
-        LocalDate dueDate = calculateBillingDueDate(closingDay, dueDay);
+        var cycleStartDate = calculateBillingCycleStartDate(closingDay);
+        var cycleClosingDate = calculateBillingCycleClosingDate(closingDay);
+        var dueDate = calculateBillingDueDate(closingDay, dueDay);
 
-        TransactionFilter filter = new TransactionFilter(
+        var filter = new TransactionFilter(
                 null,
                 cycleStartDate,
                 null,
@@ -75,12 +77,13 @@ public class CreditCardBillingService {
                 null,
                 null,
                 null,
-                List.of(creditCardId)
+                List.of(creditCardId),
+                true
         );
 
-        List<Transaction> transactions = transactionService.search(filter, null);
+        var transactions = transactionService.search(filter, null);
 
-        BigDecimal totalAmount = transactions.stream()
+        var totalAmount = transactions.stream()
                 .map(Transaction::getValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -97,35 +100,25 @@ public class CreditCardBillingService {
     }
 
     public LocalDate calculateBillingCycleStartDate(Integer closingDay) {
-        LocalDate today = LocalDate.now();
-        LocalDate lastClosingDate;
-
-        if (today.getDayOfMonth() >= closingDay) {
-            lastClosingDate = today.withDayOfMonth(closingDay);
-        } else {
-            lastClosingDate = today.minusMonths(1).withDayOfMonth(closingDay);
-        }
+        var today = LocalDate.now();
+        var lastClosingDate = today.getDayOfMonth() >= closingDay
+                ? today.withDayOfMonth(closingDay)
+                : today.minusMonths(1).withDayOfMonth(closingDay);
 
         return lastClosingDate.plusDays(1);
     }
 
     public LocalDate calculateBillingCycleClosingDate(Integer closingDay) {
-        LocalDate today = LocalDate.now();
-
-        if (today.getDayOfMonth() >= closingDay) {
-            return today.plusMonths(1).withDayOfMonth(closingDay);
-        } else {
-            return today.withDayOfMonth(closingDay);
-        }
+        var today = LocalDate.now();
+        return today.getDayOfMonth() >= closingDay
+                ? today.plusMonths(1).withDayOfMonth(closingDay)
+                : today.withDayOfMonth(closingDay);
     }
 
     public LocalDate calculateBillingDueDate(Integer closingDay, Integer dueDay) {
-        LocalDate today = LocalDate.now();
-
-        if (today.getDayOfMonth() >= closingDay) {
-            return today.plusMonths(1).withDayOfMonth(dueDay);
-        } else {
-            return today.withDayOfMonth(dueDay);
-        }
+        var today = LocalDate.now();
+        return today.getDayOfMonth() >= closingDay
+                ? today.plusMonths(1).withDayOfMonth(dueDay)
+                : today.withDayOfMonth(dueDay);
     }
 }

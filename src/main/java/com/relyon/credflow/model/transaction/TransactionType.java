@@ -1,7 +1,9 @@
 package com.relyon.credflow.model.transaction;
 
 public enum TransactionType {
-    EVENTUAL,
-    RECORRENTE,
-    PARCELA
+    ONE_TIME,
+    RECURRING,
+    INSTALLMENT,
+    PAYMENT,
+    REFUND
 }

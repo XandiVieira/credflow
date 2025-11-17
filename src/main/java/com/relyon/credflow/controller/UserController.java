@@ -26,12 +26,13 @@ public class UserController {
     private final UserMapper userMapper;
 
     @GetMapping
-    public ResponseEntity<List<UserResponseDTO>> findAll() {
-        log.info("GET request to fetch all users");
-        var users = userService.findAll().stream()
-                .map(userMapper::toDto)
-                .toList();
-        log.info("Returning {} users", users.size());
+    public ResponseEntity<org.springframework.data.domain.Page<UserResponseDTO>> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("GET request to fetch all users (page={}, size={})", page, size);
+        var users = userService.findAll(page, size)
+                .map(userMapper::toDto);
+        log.info("Returning {} users", users.getTotalElements());
         return ResponseEntity.ok(users);
     }
 

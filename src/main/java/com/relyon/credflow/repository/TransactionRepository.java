@@ -20,18 +20,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
 
     List<Transaction> findByAccountIdAndDescriptionIgnoreCase(Long accountId, String originalDescription);
 
-    @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
+    @EntityGraph(attributePaths = {"responsibleUsers", "category", "creditCard"})
     Optional<Transaction> findByIdAndAccountId(Long id, Long accountId);
 
-    @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
+    @EntityGraph(attributePaths = {"responsibleUsers", "category", "creditCard"})
     List<Transaction> findAll(Specification<Transaction> spec, Sort sort);
 
-    @EntityGraph(attributePaths = {"responsibles", "category", "creditCard"})
+    @EntityGraph(attributePaths = {"responsibleUsers", "category", "creditCard"})
     @Query("""
             select distinct t
               from Transaction t
               left join t.category c
-              left join t.responsibles r
+              left join t.responsibleUsers r
              where t.account.id = :accountId
                and (:fromDate   is null or t.date  >= :fromDate)
                and (:toDate     is null or t.date  <= :toDate)
@@ -52,4 +52,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
                              List<Long> responsibleUserIds,
                              List<Long> categoryIds,
                              Sort sort);
+
+    @Query("""
+            select t from Transaction t
+             where t.account.id = :accountId
+               and t.id != :excludeTransactionId
+               and t.date between :startDate and :endDate
+               and abs(t.value + :amount) < 0.01
+               and (:creditCardId is null or t.creditCard.id = :creditCardId)
+               and t.isReversal = false
+            """)
+    List<Transaction> findPotentialReversals(Long accountId,
+                                             Long excludeTransactionId,
+                                             BigDecimal amount,
+                                             LocalDate startDate,
+                                             LocalDate endDate,
+                                             Long creditCardId);
 }
