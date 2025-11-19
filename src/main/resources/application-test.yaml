@@ -35,3 +35,15 @@ server:
 jwt:
   secret: this-is-a-very-long-test-secret-key-32bytes-minimum!!
   expiration: 3600000
+
+app:
+  mail:
+    from: test@credflow.com
+  frontend:
+    url: http://localhost:3000
+
+spring.mail:
+  host: localhost
+  port: 25
+  username: test
+  password: test

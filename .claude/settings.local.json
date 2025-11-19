@@ -29,7 +29,13 @@
       "Bash(.\\mvnw.cmd test:*)",
       "Bash(cmd /c \"dir src\\main\\resources\")",
       "Bash(cmd /c \"dir /b src\\main\\java\\com\\relyon\\credflow\\model\")",
-      "Bash(cmd /c \"where java\")"
+      "Bash(cmd /c \"where java\")",
+      "Bash(cmd /c \"mvn test -Dtest=AccountServiceTest,CreditCardServiceTest\")",
+      "Bash(cmd /c \"mvnw.cmd test -Dtest=DashboardServiceTest\")",
+      "Bash(cmd /c \".\\mvnw.cmd test -Dtest=DashboardServiceTest\")",
+      "Bash(cmd /c \".\\mvnw.cmd test -Dtest=ReportControllerIT\")",
+      "Bash(cmd /c \"mvnw.cmd test -Dtest=ReportControllerIT\")",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

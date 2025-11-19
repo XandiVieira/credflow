@@ -256,7 +256,7 @@ class CreditCardControllerIT {
     }
 
     @Test
-    void getById_whenCardBelongsToDifferentAccount_shouldReturnNull() throws Exception {
+    void getById_whenCardBelongsToDifferentAccount_shouldReturn404() throws Exception {
         var ctx1 = registerAndLogin("card_it1");
         var ctx2 = registerAndLogin("card_it2");
 
@@ -264,8 +264,7 @@ class CreditCardControllerIT {
 
         mvc.perform(get("/v1/credit-cards/" + cardId)
                         .header("Authorization", ctx2.bearer()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").doesNotExist());
+                .andExpect(status().isNotFound());
     }
 
     @Test

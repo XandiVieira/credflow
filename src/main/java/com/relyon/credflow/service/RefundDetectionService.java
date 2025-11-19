@@ -18,6 +18,7 @@ public class RefundDetectionService {
 
     private static final int REVERSAL_SEARCH_WINDOW_DAYS = 90;
     private static final double DESCRIPTION_SIMILARITY_THRESHOLD = 0.6;
+    private final Object reversalDetectionLock = new Object();
 
     private final TransactionRepository transactionRepository;
 
@@ -33,27 +34,84 @@ public class RefundDetectionService {
             return Optional.empty();
         }
 
-        var startDate = transaction.getDate().minusDays(REVERSAL_SEARCH_WINDOW_DAYS);
-        var endDate = transaction.getDate().plusDays(REVERSAL_SEARCH_WINDOW_DAYS);
-        var creditCardId = transaction.getCreditCard() != null ? transaction.getCreditCard().getId() : null;
+        if (transaction.getValue().compareTo(BigDecimal.ZERO) > 0) {
+            log.debug("Transaction {} is positive (refund/credit), skipping reversal detection", transaction.getId());
+            return Optional.empty();
+        }
 
-        log.debug("Searching for potential reversals for transaction {} within {} to {}",
-                transaction.getId(), startDate, endDate);
+        synchronized (reversalDetectionLock) {
+            if (transaction.getIsReversal() != null && transaction.getIsReversal()) {
+                log.debug("Transaction {} was marked as reversal while waiting for lock", transaction.getId());
+                return Optional.empty();
+            }
 
-        var potentialReversals = transactionRepository.findPotentialReversals(
-                transaction.getAccount().getId(),
-                transaction.getId(),
-                transaction.getValue(),
-                startDate,
-                endDate,
-                creditCardId
-        );
+            var startDate = transaction.getDate().minusDays(REVERSAL_SEARCH_WINDOW_DAYS);
+            var endDate = transaction.getDate().plusDays(REVERSAL_SEARCH_WINDOW_DAYS);
+            var creditCardId = transaction.getCreditCard() != null ? transaction.getCreditCard().getId() : null;
 
-        return potentialReversals.stream()
-                .filter(candidate -> isLikelyReversal(transaction, candidate))
-                .findFirst()
-                .map(reversal -> linkTransactionsAsReversals(transaction, reversal));
+            log.debug("Searching for potential reversals for transaction {} within {} to {}",
+                    transaction.getId(), startDate, endDate);
+
+            var potentialReversals = transactionRepository.findPotentialReversals(
+                    transaction.getAccount().getId(),
+                    transaction.getId(),
+                    transaction.getValue(),
+                    startDate,
+                    endDate,
+                    creditCardId
+            );
+
+            return potentialReversals.stream()
+                    .filter(candidate -> isLikelyReversal(transaction, candidate))
+                    .filter(candidate -> !candidate.getIsReversal())
+                    .findFirst()
+                    .map(reversal -> linkTransactionsAsReversals(transaction, reversal));
+        }
     }
+
+    /*
+    @Transactional
+    public Optional<Transaction> detectAndLinkReversalBidirectional(Transaction transaction) {
+        if (transaction.getIsReversal() != null && transaction.getIsReversal()) {
+            log.debug("Transaction {} is already marked as reversal, skipping detection", transaction.getId());
+            return Optional.empty();
+        }
+
+        if (transaction.getValue() == null || transaction.getValue().compareTo(BigDecimal.ZERO) == 0) {
+            log.debug("Transaction {} has zero or null value, skipping reversal detection", transaction.getId());
+            return Optional.empty();
+        }
+
+        synchronized (reversalDetectionLock) {
+            if (transaction.getIsReversal() != null && transaction.getIsReversal()) {
+                log.debug("Transaction {} was marked as reversal while waiting for lock", transaction.getId());
+                return Optional.empty();
+            }
+
+            var startDate = transaction.getDate().minusDays(REVERSAL_SEARCH_WINDOW_DAYS);
+            var endDate = transaction.getDate().plusDays(REVERSAL_SEARCH_WINDOW_DAYS);
+            var creditCardId = transaction.getCreditCard() != null ? transaction.getCreditCard().getId() : null;
+
+            log.debug("Searching for potential reversals for transaction {} within {} to {}",
+                    transaction.getId(), startDate, endDate);
+
+            var potentialReversals = transactionRepository.findPotentialReversals(
+                    transaction.getAccount().getId(),
+                    transaction.getId(),
+                    transaction.getValue(),
+                    startDate,
+                    endDate,
+                    creditCardId
+            );
+
+            return potentialReversals.stream()
+                    .filter(candidate -> isLikelyReversal(transaction, candidate))
+                    .filter(candidate -> !candidate.getIsReversal())
+                    .findFirst()
+                    .map(reversal -> linkTransactionsAsReversals(transaction, reversal));
+        }
+    }
+    */
 
     private boolean isLikelyReversal(Transaction transaction, Transaction candidate) {
         var descriptionSimilarity = calculateDescriptionSimilarity(

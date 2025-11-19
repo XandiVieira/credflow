@@ -1,5 +1,6 @@
 package com.relyon.credflow.service;
 
+import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
@@ -36,7 +37,11 @@ public class CreditCardService {
 
     public CreditCardResponseDTO findById(Long id, Long accountId) {
         log.info("Fetching credit card with id {} for account {}", id, accountId);
-        CreditCard creditCard = creditCardRepository.findByIdAndAccountId(id, accountId).orElse(null);
+        CreditCard creditCard = creditCardRepository.findByIdAndAccountId(id, accountId)
+                .orElseThrow(() -> {
+                    log.warn("Credit card with id {} not found for account {}", id, accountId);
+                    return new ResourceNotFoundException("resource.creditCard.notFound", id);
+                });
         return mapToDTO(creditCard);
     }
 
@@ -51,10 +56,46 @@ public class CreditCardService {
         return creditCardRepository.save(creditCard);
     }
 
-    private CreditCardResponseDTO mapToDTO(CreditCard entity) {
-        if (entity == null) {
-            return null;
+    public CreditCard update(Long id, Long accountId, CreditCard updated, Long holderId) {
+        log.info("Updating credit card ID: {} for account {}", id, accountId);
+
+        CreditCard existing = creditCardRepository.findByIdAndAccountId(id, accountId)
+                .orElseThrow(() -> {
+                    log.warn("Credit card with id {} not found for account {}", id, accountId);
+                    return new ResourceNotFoundException("resource.creditCard.notFound", id);
+                });
+
+        User holder = userRepository.findByIdAndAccountId(holderId, accountId)
+                .orElseThrow(() -> new IllegalArgumentException(translationService.translateMessage("creditCard.holderNotFound")));
+
+        existing.setNickname(updated.getNickname());
+        existing.setBrand(updated.getBrand());
+        existing.setTier(updated.getTier());
+        existing.setIssuer(updated.getIssuer());
+        existing.setLastFourDigits(updated.getLastFourDigits());
+        existing.setClosingDay(updated.getClosingDay());
+        existing.setDueDay(updated.getDueDay());
+        existing.setCreditLimit(updated.getCreditLimit());
+        existing.setHolder(holder);
+
+        var saved = creditCardRepository.save(existing);
+        log.info("Credit card ID: {} successfully updated", id);
+        return saved;
+    }
+
+    public void delete(Long id, Long accountId) {
+        log.info("Deleting credit card ID: {} for account {}", id, accountId);
+
+        if (!creditCardRepository.existsByIdAndAccountId(id, accountId)) {
+            log.warn("Credit card with id {} not found for account {}", id, accountId);
+            throw new ResourceNotFoundException("resource.creditCard.notFound", id);
         }
+
+        creditCardRepository.deleteById(id);
+        log.info("Credit card ID: {} successfully deleted", id);
+    }
+
+    private CreditCardResponseDTO mapToDTO(CreditCard entity) {
         CreditCardResponseDTO dto = creditCardMapper.toDTO(entity);
         dto.setAvailableCreditLimit(billingService.computeAvailableLimit(dto.getId()));
         dto.setCurrentBill(billingService.computeCurrentBill(dto.getId(), entity.getClosingDay(), entity.getDueDay()));

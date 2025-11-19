@@ -56,8 +56,8 @@ public class CategoryService {
         var account = accountService.findById(accountId);
         category.setAccount(account);
 
-        category.setDefaultResponsibles(
-                resolveResponsiblesForAccount(category.getDefaultResponsibles(), accountId)
+        category.setDefaultResponsibleUsers(
+                resolveResponsibleUsersForAccount(category.getDefaultResponsibleUsers(), accountId)
         );
 
         if (category.getParentCategory() != null && category.getParentCategory().getId() != null) {
@@ -71,7 +71,7 @@ public class CategoryService {
         return repository.save(category);
     }
 
-    private Set<User> resolveResponsiblesForAccount(
+    private Set<User> resolveResponsibleUsersForAccount(
             Set<User> stubs, Long accountId) {
 
         if (stubs == null || stubs.isEmpty()) return java.util.Collections.emptySet();
@@ -110,11 +110,11 @@ public class CategoryService {
         category.setName(newName);
         category.setAccount(accountService.findById(accountId));
 
-        var incoming = updated.getDefaultResponsibles();
+        var incoming = updated.getDefaultResponsibleUsers();
         if (incoming != null) {
-            var resolved = resolveResponsiblesForAccount(incoming, accountId);
-            category.getDefaultResponsibles().clear();
-            category.getDefaultResponsibles().addAll(resolved);
+            var resolved = resolveResponsibleUsersForAccount(incoming, accountId);
+            category.getDefaultResponsibleUsers().clear();
+            category.getDefaultResponsibleUsers().addAll(resolved);
         }
 
         if (updated.getParentCategory() != null) {
@@ -195,8 +195,7 @@ public class CategoryService {
 
         if (parentCategory.getParentCategory() != null) {
             throw new IllegalArgumentException(
-                    "Category '" + parentCategory.getName() + "' is already a child category. " +
-                    "Only two levels of hierarchy are allowed (parent and child)."
+                    translationService.translateMessage("category.hierarchyDepthExceeded", parentCategory.getName())
             );
         }
 

@@ -39,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/auth/validate-reset-token").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/users").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/accounts").permitAll()
                         .anyRequest().authenticated()

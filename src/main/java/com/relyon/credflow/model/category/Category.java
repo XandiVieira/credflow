@@ -28,14 +28,13 @@ public class Category extends BaseEntity {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "category_default_responsibles",
+            name = "category_default_responsible_users",
             joinColumns = @JoinColumn(name = "category_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"),
             uniqueConstraints = @UniqueConstraint(columnNames = {"category_id", "user_id"})
     )
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Set<User> defaultResponsibles = new HashSet<>();
+    @Builder.Default
+    private Set<User> defaultResponsibleUsers = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_category_id")

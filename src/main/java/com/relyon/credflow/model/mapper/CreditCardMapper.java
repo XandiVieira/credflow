@@ -21,6 +21,9 @@ public interface CreditCardMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "holder", ignore = true)
     CreditCard toEntity(CreditCardRequestDTO dto);

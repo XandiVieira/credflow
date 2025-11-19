@@ -16,6 +16,7 @@ public class AuthenticatedUser implements UserDetails {
     private final Long userId;
     private final Long accountId;
     private final String email;
+    private final String name;
     private final String password;
 
     @Override

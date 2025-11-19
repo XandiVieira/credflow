@@ -20,12 +20,15 @@ public interface CategoryMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "account", ignore = true)
-    @Mapping(target = "defaultResponsibles", source = "defaultResponsibleIds", qualifiedByName = "idsToUsers")
+    @Mapping(target = "defaultResponsibleUsers", source = "defaultResponsibleUserIds", qualifiedByName = "idsToUsers")
     @Mapping(target = "parentCategory", source = "parentCategoryId", qualifiedByName = "idToCategory")
     Category toEntity(CategoryRequestDTO dto);
 
-    @Mapping(target = "defaultResponsibleIds", source = "defaultResponsibles", qualifiedByName = "usersToIds")
+    @Mapping(target = "defaultResponsibleUserIds", source = "defaultResponsibleUsers", qualifiedByName = "usersToIds")
     @Mapping(target = "parentCategoryId", source = "parentCategory.id")
     @Mapping(target = "parentCategoryName", source = "parentCategory.name")
     @Mapping(target = "childCategories", ignore = true)

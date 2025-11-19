@@ -19,4 +19,6 @@ public interface CreditCardRepository extends JpaRepository<CreditCard, Long> {
 
     @EntityGraph(attributePaths = {"account", "holder"})
     Optional<CreditCard> findByIdAndAccountId(Long id, Long accountId);
+
+    boolean existsByIdAndAccountId(Long id, Long accountId);
 }

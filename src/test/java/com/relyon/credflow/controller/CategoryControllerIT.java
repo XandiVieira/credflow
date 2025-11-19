@@ -72,7 +72,7 @@ class CategoryControllerIT {
 
     private long createCategory(String name, String bearer) throws Exception {
         var body = """
-                {"name":"%s","defaultResponsibleIds":[]}
+                {"name":"%s","defaultResponsibleUserIds":[]}
                 """.formatted(name);
 
         var res = mvc.perform(post("/v1/categories")
@@ -232,7 +232,7 @@ class CategoryControllerIT {
         var outsider = registerAndLogin("cat_out");
 
         var body = """
-                {"name":"WithOutsider","defaultResponsibleIds":[%d]}
+                {"name":"WithOutsider","defaultResponsibleUserIds":[%d]}
                 """.formatted(outsider.userId());
 
         mvc.perform(post("/v1/categories")

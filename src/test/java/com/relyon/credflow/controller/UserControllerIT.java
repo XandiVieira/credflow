@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.charset.StandardCharsets;
 
@@ -149,8 +150,8 @@ class UserControllerIT {
                 .andExpect(status().isNotFound());
     }
 
-    private JsonNode read(org.springframework.test.web.servlet.MvcResult res) throws Exception {
-        return om.readTree(res.getResponse().getContentAsString(StandardCharsets.UTF_8));
+    private JsonNode read(MvcResult mvcResult) throws Exception {
+        return om.readTree(mvcResult.getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
 
     @Test

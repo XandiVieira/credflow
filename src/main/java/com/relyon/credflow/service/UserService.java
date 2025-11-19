@@ -135,4 +135,21 @@ public class UserService {
         String[] parts = fullName.trim().split("\\s+");
         return parts[0];
     }
+
+    @Transactional
+    public User addUserToAccount(Long userId, Long accountId) {
+        log.info("Adding user {} to account {}", userId, accountId);
+        var user = findById(userId);
+        var account = accountService.findById(accountId);
+
+        if (user.getAccount() != null && user.getAccount().getId().equals(accountId)) {
+            log.warn("User {} is already part of account {}", userId, accountId);
+            throw new IllegalArgumentException("user.alreadyInAccount");
+        }
+
+        user.setAccount(account);
+        var saved = userRepository.save(user);
+        log.info("User {} successfully added to account {}", userId, accountId);
+        return saved;
+    }
 }

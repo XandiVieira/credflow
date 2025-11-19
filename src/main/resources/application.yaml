@@ -34,6 +34,21 @@ jwt:
   secret: ${JWT_SECRET:local-test-secret}
   expiration: ${JWT_EXPIRATION_MS:3600000}
 
+app:
+  mail:
+    from: noreply@credflow.com
+  frontend:
+    url: http://localhost:3000
+
+spring.mail:
+  host: ${MAIL_HOST:smtp.gmail.com}
+  port: ${MAIL_PORT:587}
+  username: ${MAIL_USERNAME:}
+  password: ${MAIL_PASSWORD:}
+  properties:
+    mail.smtp.auth: true
+    mail.smtp.starttls.enable: true
+
 springdoc:
   api-docs:
     path: /v3/api-docs

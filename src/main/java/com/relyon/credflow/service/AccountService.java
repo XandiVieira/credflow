@@ -28,6 +28,13 @@ public class AccountService {
         return accounts;
     }
 
+    public List<Account> findAllByUserId(Long userId) {
+        log.info("Fetching accounts for user {}", userId);
+        var accounts = accountRepository.findAllByUsersId(userId);
+        log.info("Found {} accounts for user {}", accounts.size(), userId);
+        return accounts;
+    }
+
     public Account findById(Long id) {
         log.info("Fetching account by ID {}", id);
         return accountRepository.findById(id)
@@ -82,6 +89,17 @@ public class AccountService {
             code = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         } while (accountRepository.findByInviteCode(code).isPresent());
         return code;
+    }
+
+    @Transactional
+    public String regenerateInviteCode(Long accountId) {
+        log.info("Regenerating invite code for account {}", accountId);
+        var account = findById(accountId);
+        var newCode = generateUniqueInviteCode();
+        account.setInviteCode(newCode);
+        accountRepository.save(account);
+        log.info("Invite code regenerated for account {}", accountId);
+        return newCode;
     }
 
     public Account update(Long id, Account updated) {

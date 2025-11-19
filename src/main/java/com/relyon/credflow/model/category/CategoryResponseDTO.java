@@ -8,7 +8,7 @@ import java.util.List;
 public class CategoryResponseDTO {
     private Long id;
     private String name;
-    private List<Long> defaultResponsibleIds;
+    private List<Long> defaultResponsibleUserIds;
     private Long parentCategoryId;
     private String parentCategoryName;
     private List<CategoryResponseDTO> childCategories;

@@ -270,7 +270,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void bulkUpdateResponsibles_updatesAllTransactionsWithNewResponsibles() {
+    void bulkUpdateResponsibleUsers_updatesAllTransactionsWithNewResponsibleUsers() {
         var accountId = 1L;
         var responsibleIds = List.of(5L, 6L);
         var transactionIds = List.of(1L, 2L);
@@ -300,7 +300,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void bulkUpdateResponsibles_marksImportedTransactionsAsEdited() {
+    void bulkUpdateResponsibleUsers_marksImportedTransactionsAsEdited() {
         var accountId = 1L;
         var responsibleIds = List.of(5L);
 

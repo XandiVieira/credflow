@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -270,8 +271,8 @@ class TransactionControllerIT {
         return read(res).get("id").asLong();
     }
 
-    private JsonNode read(org.springframework.test.web.servlet.MvcResult r) throws Exception {
-        return om.readTree(r.getResponse().getContentAsString(StandardCharsets.UTF_8));
+    private JsonNode read(MvcResult mvcResult) throws Exception {
+        return om.readTree(mvcResult.getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
 
     @Test
@@ -336,7 +337,7 @@ class TransactionControllerIT {
     }
 
     @Test
-    void bulkUpdateResponsibles_updatesAllTransactionsSuccessfully() throws Exception {
+    void bulkUpdateResponsibleUsers_updatesAllTransactionsSuccessfully() throws Exception {
         var ctx = registerAndLogin("bulk_resp");
         var catId = createCategory("Test", ctx.bearer());
 

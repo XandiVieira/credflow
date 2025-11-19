@@ -19,4 +19,7 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     @EntityGraph(attributePaths = "users")
     Optional<Account> findByInviteCode(String code);
+
+    @EntityGraph(attributePaths = "users")
+    List<Account> findAllByUsersId(Long userId);
 }

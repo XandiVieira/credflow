@@ -1,5 +1,6 @@
 package com.relyon.credflow.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.relyon.credflow.model.user.AuthRequest;
 import com.relyon.credflow.model.user.UserRequestDTO;
@@ -9,23 +10,27 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@Import(com.relyon.credflow.configuration.TestMailConfig.class)
 class AuthenticationControllerIT {
 
     @Autowired
@@ -191,5 +196,109 @@ class AuthenticationControllerIT {
         assertThat(body).contains("name is required");
         assertThat(body).contains("password is required");
         assertThat(body).contains("password confirmation is required");
+    }
+
+    @Test
+    void forgotPassword_validEmail_shouldReturn200() throws Exception {
+        var email = "reset" + System.nanoTime() + "@example.com";
+        registerUser(email);
+
+        mvc.perform(post("/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of("email", email))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        assertThat(user.getPasswordResetToken()).isNotNull();
+        assertThat(user.getResetTokenExpiry()).isNotNull();
+    }
+
+    @Test
+    void forgotPassword_invalidEmail_shouldReturn404() throws Exception {
+        mvc.perform(post("/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of("email", "nonexistent@example.com"))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void resetPassword_validToken_shouldReturn200AndResetPassword() throws Exception {
+        var email = "reset" + System.nanoTime() + "@example.com";
+        registerUser(email);
+
+        mvc.perform(post("/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of("email", email))))
+                .andExpect(status().isOk());
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        var token = user.getPasswordResetToken();
+
+        mvc.perform(post("/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of(
+                                "token", token,
+                                "newPassword", "NewP@ssw0rd!"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password reset successfully"));
+
+        var updatedUser = userRepository.findByEmail(email).orElseThrow();
+        assertThat(updatedUser.getPasswordResetToken()).isNull();
+        assertThat(updatedUser.getResetTokenExpiry()).isNull();
+    }
+
+    @Test
+    void resetPassword_invalidToken_shouldReturn400() throws Exception {
+        mvc.perform(post("/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of(
+                                "token", "invalid-token",
+                                "newPassword", "NewP@ssw0rd!"
+                        ))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void validateResetToken_validToken_shouldReturn200() throws Exception {
+        var email = "reset" + System.nanoTime() + "@example.com";
+        registerUser(email);
+
+        mvc.perform(post("/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of("email", email))))
+                .andExpect(status().isOk());
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        var token = user.getPasswordResetToken();
+
+        mvc.perform(get("/v1/auth/validate-reset-token")
+                        .param("token", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Token is valid"));
+    }
+
+    @Test
+    void validateResetToken_invalidToken_shouldReturn400() throws Exception {
+        mvc.perform(get("/v1/auth/validate-reset-token")
+                        .param("token", "invalid-token"))
+                .andExpect(status().isBadRequest());
+    }
+
+    private void registerUser(String email) throws Exception {
+        mvc.perform(post("/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of(
+                                "name", "Test User",
+                                "email", email,
+                                "password", "Str0ngP@ss!",
+                                "confirmPassword", "Str0ngP@ss!"
+                        ))))
+                .andExpect(status().isCreated());
+    }
+
+    private JsonNode read(MvcResult mvcResult) throws Exception {
+        return om.readTree(mvcResult.getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
 }

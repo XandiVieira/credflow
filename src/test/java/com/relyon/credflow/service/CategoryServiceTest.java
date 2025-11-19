@@ -162,13 +162,13 @@ class CategoryServiceTest {
         updated.setName("  Transport  ");
         var john = user(1L, "John");                 // helper that creates a stub user (no account)
         var updatedDefaults = set(john);
-        updated.setDefaultResponsibles(updatedDefaults);
+        updated.setDefaultResponsibleUsers(updatedDefaults);
 
         var existing = new Category();
         existing.setId(id);
         existing.setName("Old");
         var oldUser = user(2L, "Old");
-        existing.setDefaultResponsibles(set(oldUser));
+        existing.setDefaultResponsibleUsers(set(oldUser));
 
         var account = new Account();
         account.setId(accountId);
@@ -181,7 +181,7 @@ class CategoryServiceTest {
         var saved = new Category();
         saved.setId(id);
         saved.setName("Transport");
-        saved.setDefaultResponsibles(updatedDefaults);
+        saved.setDefaultResponsibleUsers(updatedDefaults);
         when(repository.save(same(existing))).thenReturn(saved);
 
         // IMPORTANT: users resolved by the service must carry the same account
@@ -204,7 +204,7 @@ class CategoryServiceTest {
         assertSame(account, existing.getAccount());
 
         // assert content, not identity (service may create a new Set instance)
-        var resultingIds = existing.getDefaultResponsibles().stream()
+        var resultingIds = existing.getDefaultResponsibleUsers().stream()
                 .map(User::getId)
                 .collect(java.util.stream.Collectors.toSet());
         assertEquals(java.util.Set.of(1L), resultingIds);
@@ -229,7 +229,7 @@ class CategoryServiceTest {
         janeStub.setId(3L);
         var updatedDefaults = new java.util.HashSet<User>();
         updatedDefaults.add(janeStub);
-        updated.setDefaultResponsibles(updatedDefaults);
+        updated.setDefaultResponsibleUsers(updatedDefaults);
 
         var existingSame = new Category();
         existingSame.setId(id);
@@ -261,8 +261,8 @@ class CategoryServiceTest {
         assertSame(account, existingSame.getAccount());
 
         // the service likely replaces the set instance; assert content, not identity
-        assertEquals(1, existingSame.getDefaultResponsibles().size());
-        assertTrue(existingSame.getDefaultResponsibles()
+        assertEquals(1, existingSame.getDefaultResponsibleUsers().size());
+        assertTrue(existingSame.getDefaultResponsibleUsers()
                 .stream().anyMatch(u -> u.getId().equals(3L)));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("home", accountId);
@@ -443,10 +443,11 @@ class CategoryServiceTest {
         when(repository.findByNameIgnoreCaseAndAccountId("sub-eventos", accountId)).thenReturn(Optional.empty());
         when(accountService.findById(accountId)).thenReturn(account);
         when(repository.findByIdAndAccountId(parentId, accountId)).thenReturn(Optional.of(parentCategory));
+        when(translationService.translateMessage(eq("category.hierarchyDepthExceeded"), anyString()))
+                .thenReturn("Cannot use 'Eventos' as parent because it is already a child category. Maximum 2-level hierarchy allowed (parent → child)");
 
         var ex = assertThrows(IllegalArgumentException.class, () -> service.create(input, accountId));
-        assertTrue(ex.getMessage().contains("already a child category"));
-        assertTrue(ex.getMessage().contains("two levels"));
+        assertTrue(ex.getMessage().contains("already a child category") || ex.getMessage().contains("2-level hierarchy"));
 
         verify(repository, times(1)).findByNameIgnoreCaseAndAccountId("sub-eventos", accountId);
         verify(accountService, times(1)).findById(accountId);

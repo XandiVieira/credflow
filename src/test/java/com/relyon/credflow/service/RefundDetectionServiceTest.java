@@ -61,7 +61,7 @@ class RefundDetectionServiceTest {
 
     @Test
     void detectAndLinkReversal_whenNoMatchingReversalFound_returnsEmpty() {
-        var transaction = createTransaction(1L, BigDecimal.valueOf(100), LocalDate.now());
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-100), LocalDate.now());
         transaction.setDescription("Purchase at Store");
 
         when(transactionRepository.findPotentialReversals(
@@ -79,10 +79,10 @@ class RefundDetectionServiceTest {
 
     @Test
     void detectAndLinkReversal_whenExactDescriptionMatch_linksTransactionsAndReturnsCandidateAlso() {
-        var transaction = createTransaction(1L, BigDecimal.valueOf(100), LocalDate.now());
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-100), LocalDate.now());
         transaction.setDescription("Purchase at Store XYZ");
 
-        var reversal = createTransaction(2L, BigDecimal.valueOf(-100), LocalDate.now().plusDays(2));
+        var reversal = createTransaction(2L, BigDecimal.valueOf(100), LocalDate.now().plusDays(2));
         reversal.setDescription("Purchase at Store XYZ");
 
         when(transactionRepository.findPotentialReversals(
@@ -108,10 +108,10 @@ class RefundDetectionServiceTest {
 
     @Test
     void detectAndLinkReversal_whenSimilarDescriptionAboveThreshold_linksTransactions() {
-        var transaction = createTransaction(1L, BigDecimal.valueOf(150.50), LocalDate.now());
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-150.50), LocalDate.now());
         transaction.setDescription("AMAZON PURCHASE 12345");
 
-        var reversal = createTransaction(2L, BigDecimal.valueOf(-150.50), LocalDate.now().plusDays(5));
+        var reversal = createTransaction(2L, BigDecimal.valueOf(150.50), LocalDate.now().plusDays(5));
         reversal.setDescription("AMAZON REFUND 12345");
 
         when(transactionRepository.findPotentialReversals(
@@ -126,11 +126,22 @@ class RefundDetectionServiceTest {
     }
 
     @Test
-    void detectAndLinkReversal_whenDissimilarDescription_doesNotLink() {
+    void detectAndLinkReversal_whenPositiveValue_skipsDetection() {
         var transaction = createTransaction(1L, BigDecimal.valueOf(100), LocalDate.now());
+        transaction.setDescription("Refund from Store");
+
+        var result = service.detectAndLinkReversal(transaction);
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(transactionRepository);
+    }
+
+    @Test
+    void detectAndLinkReversal_whenDissimilarDescription_doesNotLink() {
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-100), LocalDate.now());
         transaction.setDescription("Grocery Store ABC");
 
-        var notAReversal = createTransaction(2L, BigDecimal.valueOf(-100), LocalDate.now().plusDays(1));
+        var notAReversal = createTransaction(2L, BigDecimal.valueOf(100), LocalDate.now().plusDays(1));
         notAReversal.setDescription("Restaurant XYZ Dinner");
 
         when(transactionRepository.findPotentialReversals(
@@ -148,7 +159,7 @@ class RefundDetectionServiceTest {
         var creditCard = new CreditCard();
         creditCard.setId(5L);
 
-        var transaction = createTransaction(1L, BigDecimal.valueOf(200), LocalDate.now());
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-200), LocalDate.now());
         transaction.setCreditCard(creditCard);
 
         when(transactionRepository.findPotentialReversals(
@@ -169,7 +180,7 @@ class RefundDetectionServiceTest {
 
     @Test
     void detectAndLinkReversal_withNoCreditCard_passesNullCardIdToRepository() {
-        var transaction = createTransaction(1L, BigDecimal.valueOf(200), LocalDate.now());
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-200), LocalDate.now());
         transaction.setCreditCard(null);
 
         when(transactionRepository.findPotentialReversals(
@@ -191,7 +202,7 @@ class RefundDetectionServiceTest {
     @Test
     void detectAndLinkReversal_searchesWithin90DaysWindow() {
         var transactionDate = LocalDate.of(2025, 1, 15);
-        var transaction = createTransaction(1L, BigDecimal.valueOf(100), transactionDate);
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-100), transactionDate);
 
         when(transactionRepository.findPotentialReversals(
                 anyLong(), anyLong(), any(), any(), any(), any()
@@ -216,13 +227,13 @@ class RefundDetectionServiceTest {
 
     @Test
     void detectAndLinkReversal_whenMultipleCandidates_selectsFirstMatch() {
-        var transaction = createTransaction(1L, BigDecimal.valueOf(100), LocalDate.now());
+        var transaction = createTransaction(1L, BigDecimal.valueOf(-100), LocalDate.now());
         transaction.setDescription("Store Purchase");
 
-        var reversal1 = createTransaction(2L, BigDecimal.valueOf(-100), LocalDate.now().plusDays(1));
+        var reversal1 = createTransaction(2L, BigDecimal.valueOf(100), LocalDate.now().plusDays(1));
         reversal1.setDescription("Store Purchase");
 
-        var reversal2 = createTransaction(3L, BigDecimal.valueOf(-100), LocalDate.now().plusDays(2));
+        var reversal2 = createTransaction(3L, BigDecimal.valueOf(100), LocalDate.now().plusDays(2));
         reversal2.setDescription("Store Purchase");
 
         when(transactionRepository.findPotentialReversals(

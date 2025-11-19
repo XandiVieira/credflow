@@ -68,4 +68,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
                                              LocalDate startDate,
                                              LocalDate endDate,
                                              Long creditCardId);
+
+    List<Transaction> findByCsvImportHistoryId(Long csvImportHistoryId);
 }

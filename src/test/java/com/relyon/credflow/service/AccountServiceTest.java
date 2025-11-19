@@ -25,6 +25,9 @@ class AccountServiceTest {
     @Mock
     private AccountRepository accountRepository;
 
+    @Mock
+    private LocalizedMessageTranslationService translationService;
+
     @InjectMocks
     private AccountService accountService;
 
@@ -62,6 +65,45 @@ class AccountServiceTest {
         assertTrue(result.isEmpty());
 
         verify(accountRepository, times(1)).findAll();
+        verifyNoMoreInteractions(accountRepository);
+    }
+
+    @Test
+    void findAllByUserId_whenUserHasAccounts_returnsAccountsForUser() {
+        var userId = 42L;
+        var a1 = new Account();
+        a1.setName("User Account 1");
+        a1.setDescription("First account");
+
+        var a2 = new Account();
+        a2.setName("User Account 2");
+        a2.setDescription("Second account");
+
+        var repoResult = List.of(a1, a2);
+        when(accountRepository.findAllByUsersId(userId)).thenReturn(repoResult);
+
+        var result = accountService.findAllByUserId(userId);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertSame(a1, result.get(0));
+        assertSame(a2, result.get(1));
+
+        verify(accountRepository, times(1)).findAllByUsersId(userId);
+        verifyNoMoreInteractions(accountRepository);
+    }
+
+    @Test
+    void findAllByUserId_whenUserHasNoAccounts_returnsEmptyList() {
+        var userId = 99L;
+        when(accountRepository.findAllByUsersId(userId)).thenReturn(List.of());
+
+        var result = accountService.findAllByUserId(userId);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+
+        verify(accountRepository, times(1)).findAllByUsersId(userId);
         verifyNoMoreInteractions(accountRepository);
     }
 
@@ -388,5 +430,66 @@ class AccountServiceTest {
         verify(accountRepository, times(1)).existsById(id);
         verify(accountRepository, times(1)).deleteById(id);
         verifyNoMoreInteractions(accountRepository);
+    }
+
+    @Test
+    void findByInviteCode_validCode_shouldReturnAccount() {
+        var account = new Account();
+        account.setId(1L);
+        account.setInviteCode("ABC123");
+
+        when(accountRepository.findByInviteCode("ABC123")).thenReturn(Optional.of(account));
+
+        var result = accountService.findByInviteCode("ABC123");
+
+        assertNotNull(result);
+        assertSame(account, result);
+        assertEquals("ABC123", result.getInviteCode());
+
+        verify(accountRepository, times(1)).findByInviteCode("ABC123");
+        verifyNoMoreInteractions(accountRepository);
+    }
+
+    @Test
+    void findByInviteCode_invalidCode_shouldThrowException() {
+        when(accountRepository.findByInviteCode("INVALID")).thenReturn(Optional.empty());
+
+        var ex = assertThrows(ResourceNotFoundException.class, () -> accountService.findByInviteCode("INVALID"));
+        assertEquals("resource.account.notFoundByCode", ex.getMessage());
+
+        verify(accountRepository, times(1)).findByInviteCode("INVALID");
+        verifyNoMoreInteractions(accountRepository);
+    }
+
+    @Test
+    void regenerateInviteCode_existingAccount_shouldGenerateNewCode() {
+        var account = new Account();
+        account.setId(1L);
+        account.setInviteCode("OLD123");
+
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(accountRepository.findByInviteCode(anyString())).thenReturn(Optional.empty());
+        when(accountRepository.save(any(Account.class))).thenAnswer(i -> i.getArgument(0));
+
+        var oldCode = account.getInviteCode();
+        var newCode = accountService.regenerateInviteCode(1L);
+
+        assertNotNull(newCode);
+        assertEquals(6, newCode.length());
+        assertNotEquals(oldCode, newCode);
+
+        var captor = ArgumentCaptor.forClass(Account.class);
+        verify(accountRepository).save(captor.capture());
+
+        assertEquals(newCode, captor.getValue().getInviteCode());
+    }
+
+    @Test
+    void regenerateInviteCode_nonExistingAccount_shouldThrowException() {
+        when(accountRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> accountService.regenerateInviteCode(999L));
+
+        verify(accountRepository, never()).save(any(Account.class));
     }
 }

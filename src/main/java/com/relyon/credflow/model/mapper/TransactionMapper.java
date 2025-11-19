@@ -22,15 +22,19 @@ public interface TransactionMapper {
     @Mapping(target = "checksum", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "category", source = "categoryId", qualifiedByName = "idToCategory")
     @Mapping(target = "responsibleUsers", source = "responsibleUsers", qualifiedByName = "idsToUsers")
-    @Mapping(target = "creditCard", ignore = true)
+    @Mapping(target = "creditCard", source = "creditCardId", qualifiedByName = "idToCreditCard")
     @Mapping(target = "source", ignore = true)
     @Mapping(target = "importBatchId", ignore = true)
     @Mapping(target = "wasEditedAfterImport", ignore = true)
     @Mapping(target = "originalChecksum", ignore = true)
     @Mapping(target = "isReversal", ignore = true)
     @Mapping(target = "relatedTransaction", ignore = true)
+    @Mapping(target = "csvImportHistory", ignore = true)
     Transaction toEntity(TransactionRequestDTO dto);
 
     @Mapping(target = "accountId", source = "account.id")
@@ -60,6 +64,14 @@ public interface TransactionMapper {
         var c = new Category();
         c.setId(id);
         return c;
+    }
+
+    @Named("idToCreditCard")
+    default com.relyon.credflow.model.credit_card.CreditCard idToCreditCard(Long id) {
+        if (id == null) return null;
+        var card = new com.relyon.credflow.model.credit_card.CreditCard();
+        card.setId(id);
+        return card;
     }
 
     @Named("idsToUsers")

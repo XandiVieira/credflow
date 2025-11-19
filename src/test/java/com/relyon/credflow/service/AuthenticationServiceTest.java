@@ -73,7 +73,7 @@ class AuthenticationServiceTest {
         req.setEmail("alex@example.com");
         req.setPassword("s3cr3t");
 
-        var principal = new AuthenticatedUser(42L, 1L, "alex@example.com", "myPassword");
+        var principal = new AuthenticatedUser(42L, 1L, "alex@example.com", "Alex", "myPassword");
 
         var authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(principal);

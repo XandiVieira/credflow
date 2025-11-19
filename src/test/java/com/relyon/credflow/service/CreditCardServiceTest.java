@@ -141,15 +141,15 @@ class CreditCardServiceTest {
     }
 
     @Test
-    void findById_whenCreditCardNotFound_shouldReturnNull() {
+    void findById_whenCreditCardNotFound_shouldThrowException() {
         var cardId = 999L;
         var accountId = 1L;
 
         when(creditCardRepository.findByIdAndAccountId(cardId, accountId)).thenReturn(Optional.empty());
 
-        var result = service.findById(cardId, accountId);
+        assertThatThrownBy(() -> service.findById(cardId, accountId))
+                .isInstanceOf(com.relyon.credflow.exception.ResourceNotFoundException.class);
 
-        assertThat(result).isNull();
         verify(creditCardRepository).findByIdAndAccountId(cardId, accountId);
         verifyNoInteractions(creditCardMapper, billingService);
     }
@@ -287,5 +287,87 @@ class CreditCardServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getDescription()).isEqualTo("My Card - 9999");
+    }
+
+    @Test
+    void update_whenCardExists_shouldUpdateSuccessfully() {
+        var cardId = 1L;
+        var accountId = 1L;
+        var holderId = 10L;
+
+        var existing = CreditCard.builder()
+                .id(cardId)
+                .nickname("Old Nickname")
+                .brand("Visa")
+                .tier("Gold")
+                .build();
+
+        var updated = CreditCard.builder()
+                .nickname("New Nickname")
+                .brand("Mastercard")
+                .tier("Platinum")
+                .issuer("Bank ABC")
+                .lastFourDigits("5678")
+                .closingDay(20)
+                .dueDay(28)
+                .creditLimit(new BigDecimal("15000.00"))
+                .build();
+
+        var holder = User.builder().id(holderId).name("John Doe").build();
+
+        when(creditCardRepository.findByIdAndAccountId(cardId, accountId)).thenReturn(Optional.of(existing));
+        when(userRepository.findByIdAndAccountId(holderId, accountId)).thenReturn(Optional.of(holder));
+        when(creditCardRepository.save(any(CreditCard.class))).thenReturn(existing);
+
+        var result = service.update(cardId, accountId, updated, holderId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getNickname()).isEqualTo("New Nickname");
+        verify(creditCardRepository).findByIdAndAccountId(cardId, accountId);
+        verify(userRepository).findByIdAndAccountId(holderId, accountId);
+        verify(creditCardRepository).save(existing);
+    }
+
+    @Test
+    void update_whenCardNotFound_shouldThrowException() {
+        var cardId = 999L;
+        var accountId = 1L;
+        var updated = CreditCard.builder().nickname("New").build();
+
+        when(creditCardRepository.findByIdAndAccountId(cardId, accountId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(cardId, accountId, updated, 10L))
+                .isInstanceOf(com.relyon.credflow.exception.ResourceNotFoundException.class);
+
+        verify(creditCardRepository).findByIdAndAccountId(cardId, accountId);
+        verifyNoInteractions(userRepository);
+        verify(creditCardRepository, never()).save(any());
+    }
+
+    @Test
+    void delete_whenCardExists_shouldDeleteSuccessfully() {
+        var cardId = 1L;
+        var accountId = 1L;
+
+        when(creditCardRepository.existsByIdAndAccountId(cardId, accountId)).thenReturn(true);
+
+        service.delete(cardId, accountId);
+
+        verify(creditCardRepository).existsByIdAndAccountId(cardId, accountId);
+        verify(creditCardRepository).deleteById(cardId);
+    }
+
+    @Test
+    void delete_whenCardNotFound_shouldThrowException() {
+        var cardId = 999L;
+        var accountId = 1L;
+
+        when(creditCardRepository.existsByIdAndAccountId(cardId, accountId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(cardId, accountId))
+                .isInstanceOf(com.relyon.credflow.exception.ResourceNotFoundException.class);
+
+        verify(creditCardRepository).existsByIdAndAccountId(cardId, accountId);
+        verify(creditCardRepository, never()).deleteById(any());
     }
 }

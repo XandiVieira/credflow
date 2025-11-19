@@ -4,12 +4,10 @@ import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.credit_card.CreditCard;
+import com.relyon.credflow.model.csv.CsvImportHistory;
 import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
@@ -44,11 +42,12 @@ public class Transaction extends BaseEntity {
     private BigDecimal value;
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "transaction_responsibles",
+            name = "transaction_responsible_users",
             joinColumns = @JoinColumn(name = "transaction_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"),
             uniqueConstraints = @UniqueConstraint(columnNames = {"transaction_id", "user_id"})
     )
+    @Builder.Default
     private Set<User> responsibleUsers = new HashSet<>();
     @Column(name = "checksum", unique = true)
     private String checksum;
@@ -60,6 +59,7 @@ public class Transaction extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private TransactionType transactionType = TransactionType.ONE_TIME;
 
     private Integer currentInstallment;
@@ -71,18 +71,25 @@ public class Transaction extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private TransactionSource source = TransactionSource.MANUAL;
 
     @Column(name = "import_batch_id")
     private String importBatchId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "csv_import_history_id")
+    private CsvImportHistory csvImportHistory;
+
     @Column(name = "was_edited_after_import", nullable = false)
+    @Builder.Default
     private Boolean wasEditedAfterImport = false;
 
     @Column(name = "original_checksum")
     private String originalChecksum;
 
     @Column(name = "is_reversal", nullable = false)
+    @Builder.Default
     private Boolean isReversal = false;
 
     @ManyToOne(fetch = FetchType.LAZY)

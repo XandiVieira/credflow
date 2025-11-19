@@ -27,4 +27,6 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String email;
     private String password;
+    private String passwordResetToken;
+    private java.time.LocalDateTime resetTokenExpiry;
 }
