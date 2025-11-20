@@ -4,7 +4,6 @@ import com.relyon.credflow.exception.CsvProcessingException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
-import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionFilter;

@@ -1,13 +1,15 @@
 package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.TransactionMapper;
-import com.relyon.credflow.model.transaction.*;
+import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
+import com.relyon.credflow.model.transaction.TransactionRequestDTO;
+import com.relyon.credflow.model.transaction.TransactionResponseDTO;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;

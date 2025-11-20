@@ -76,10 +76,12 @@ public class AuthenticationController {
         return ResponseEntity.ok(Map.of("message", "Token is valid"));
     }
 
-    record ForgotPasswordRequest(@NotBlank @Email String email) {}
+    record ForgotPasswordRequest(@NotBlank @Email String email) {
+    }
 
     record ResetPasswordRequest(
             @NotBlank String token,
             @NotBlank String newPassword
-    ) {}
+    ) {
+    }
 }

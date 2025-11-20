@@ -3,22 +3,25 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,10 +54,12 @@ class ReportServiceTest {
                 createTransaction(2L, LocalDate.of(2025, 1, 15), BigDecimal.valueOf(-200), null, childCategory, null)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var report = reportService.getCategoryReport(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var report = reportService.getCategoryReport(filter);
 
         assertThat(report.getTotalExpense()).isEqualByComparingTo(BigDecimal.valueOf(500));
         assertThat(report.getCategories()).hasSize(2);
@@ -79,15 +84,17 @@ class ReportServiceTest {
                 createTransaction(2L, LocalDate.of(2025, 1, 15), BigDecimal.valueOf(-100), null, category2, null)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var report = reportService.getCategoryReport(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var report = reportService.getCategoryReport(filter);
 
         assertThat(report.getTotalExpense()).isEqualByComparingTo(BigDecimal.valueOf(500));
         assertThat(report.getCategories()).hasSize(2);
 
-        var foodCategory = report.getCategories().get(0);
+        var foodCategory = report.getCategories().getFirst();
         assertThat(foodCategory.getCategoryName()).isEqualTo("Food");
         assertThat(foodCategory.getPercentage()).isEqualByComparingTo(BigDecimal.valueOf(80.00));
 
@@ -107,15 +114,17 @@ class ReportServiceTest {
                 createTransaction(3L, LocalDate.of(2025, 1, 20), BigDecimal.valueOf(-100), user1, null, null)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var report = reportService.getUserReport(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var report = reportService.getUserReport(filter);
 
         assertThat(report.getTotalExpense()).isEqualByComparingTo(BigDecimal.valueOf(600));
         assertThat(report.getUsers()).hasSize(2);
 
-        var johnReport = report.getUsers().get(0);
+        var johnReport = report.getUsers().getFirst();
         assertThat(johnReport.getUserName()).isEqualTo("John");
         assertThat(johnReport.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(400));
         assertThat(johnReport.getTransactionCount()).isEqualTo(2);
@@ -133,15 +142,17 @@ class ReportServiceTest {
                 createTransaction(3L, LocalDate.of(2025, 1, 20), BigDecimal.valueOf(-200), null, null, card2)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var report = reportService.getCreditCardReport(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var report = reportService.getCreditCardReport(filter);
 
         assertThat(report.getTotalExpense()).isEqualByComparingTo(BigDecimal.valueOf(1000));
         assertThat(report.getCreditCards()).hasSize(2);
 
-        var visaReport = report.getCreditCards().get(0);
+        var visaReport = report.getCreditCards().getFirst();
         assertThat(visaReport.getCreditCardNickname()).isEqualTo("Visa");
         assertThat(visaReport.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(800));
         assertThat(visaReport.getTransactionCount()).isEqualTo(2);
@@ -160,14 +171,16 @@ class ReportServiceTest {
                 createTransaction(6L, LocalDate.of(2025, 3, 15), BigDecimal.valueOf(-500), null, null, null)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var report = reportService.getMonthComparison(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var report = reportService.getMonthComparison(filter);
 
         assertThat(report.getMonths()).hasSize(3);
 
-        var jan = report.getMonths().get(0);
+        var jan = report.getMonths().getFirst();
         assertThat(jan.getMonth()).isEqualTo(1);
         assertThat(jan.getIncome()).isEqualByComparingTo(BigDecimal.valueOf(1000));
         assertThat(jan.getExpense()).isEqualByComparingTo(BigDecimal.valueOf(400));
@@ -184,10 +197,12 @@ class ReportServiceTest {
 
     @Test
     void getCategoryReport_withNoTransactions_shouldReturnEmpty() {
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(List.of());
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(List.of());
 
-        var report = reportService.getCategoryReport(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var report = reportService.getCategoryReport(filter);
 
         assertThat(report.getTotalExpense()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(report.getCategories()).isEmpty();

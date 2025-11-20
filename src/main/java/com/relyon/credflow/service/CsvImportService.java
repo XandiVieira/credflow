@@ -5,6 +5,7 @@ import com.relyon.credflow.model.csv.CsvImportFormat;
 import com.relyon.credflow.model.csv.CsvImportHistory;
 import com.relyon.credflow.model.csv.CsvImportStatus;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.repository.AccountRepository;
 import com.relyon.credflow.repository.CsvImportHistoryRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class CsvImportService {
 
     private final CsvImportHistoryRepository csvImportHistoryRepository;
     private final TransactionRepository transactionRepository;
+    private final AccountRepository accountRepository;
     private final TransactionService transactionService;
     private final LocalizedMessageTranslationService translationService;
 
@@ -30,8 +32,11 @@ public class CsvImportService {
         log.info("Starting CSV import: file={}, format={}, account={}",
                 file.getOriginalFilename(), format, accountId);
 
+        var account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("resource.account.notFound", accountId));
+
         var history = CsvImportHistory.builder()
-                .account(com.relyon.credflow.model.account.Account.builder().id(accountId).build())
+                .account(account)
                 .fileName(file.getOriginalFilename())
                 .format(format)
                 .status(CsvImportStatus.SUCCESS)
@@ -50,9 +55,9 @@ public class CsvImportService {
 
             history = csvImportHistoryRepository.save(history);
 
-            var finalHistoryId = history.getId();
+            var finalHistory = history;
             imported.forEach(t -> {
-                t.setCsvImportHistory(CsvImportHistory.builder().id(finalHistoryId).build());
+                t.setCsvImportHistory(finalHistory);
                 transactionRepository.save(t);
             });
 

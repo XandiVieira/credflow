@@ -9,8 +9,7 @@ import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.mapping.PropertyReferenceException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindException;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
-import java.util.List;
 import java.util.Objects;
 
 import static org.springframework.http.HttpStatus.*;
@@ -148,6 +146,14 @@ public class GlobalExceptionHandler {
         log.error("BAD_REQUEST - Missing Request Parameter", cause);
         var message = translationService.translateMessage("query.missingParameter", cause.getParameterName());
         return ErrorBody.from(message, BAD_REQUEST.value());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ResponseStatus(CONFLICT)
+    public ErrorBody handleOptimisticLocking(ObjectOptimisticLockingFailureException cause) {
+        log.error("CONFLICT - Optimistic Locking Failure", cause);
+        var message = translationService.translateMessage("optimisticLock.conflict");
+        return ErrorBody.from(message, CONFLICT.value());
     }
 
     @ExceptionHandler(Exception.class)

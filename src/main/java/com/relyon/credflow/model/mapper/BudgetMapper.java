@@ -12,6 +12,7 @@ import org.mapstruct.Named;
 public interface BudgetMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -32,6 +33,7 @@ public interface BudgetMapper {
     BudgetResponseDTO toDto(Budget entity);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "user", source = "userId", qualifiedByName = "idToUser")
     @Mapping(target = "createdAt", ignore = true)

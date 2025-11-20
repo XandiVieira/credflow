@@ -47,13 +47,9 @@ public class CreditCard extends BaseEntity {
     private BigDecimal creditLimit;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private Account account;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "holder_id", nullable = false)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private User holder;
 }

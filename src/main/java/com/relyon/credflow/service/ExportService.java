@@ -7,11 +7,14 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
+import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.TransactionRepository;
+import com.relyon.credflow.specification.TransactionSpecFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,12 +34,12 @@ public class ExportService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     @Transactional(readOnly = true)
-    public byte[] exportToCsv(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Exporting transactions to CSV for account {} from {} to {}", accountId, startDate, endDate);
+    public byte[] exportToCsv(TransactionFilter filter) {
+        log.info("Exporting transactions to CSV for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "date"));
 
         var csv = new StringBuilder();
         csv.append("Date,Description,Category,Responsible Users,Credit Card,Value,Type\n");
@@ -55,12 +58,12 @@ public class ExportService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] exportToPdf(Long accountId, LocalDate startDate, LocalDate endDate) throws IOException {
-        log.info("Exporting transactions to PDF for account {} from {} to {}", accountId, startDate, endDate);
+    public byte[] exportToPdf(TransactionFilter filter) throws IOException {
+        log.info("Exporting transactions to PDF for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "date"));
 
         var baos = new ByteArrayOutputStream();
         var writer = new PdfWriter(baos);
@@ -72,7 +75,7 @@ public class ExportService {
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER));
 
-        document.add(new Paragraph("Period: " + formatDate(startDate) + " to " + formatDate(endDate))
+        document.add(new Paragraph("Period: " + formatDate(filter.fromDate()) + " to " + formatDate(filter.toDate()))
                 .setFontSize(12)
                 .setTextAlignment(TextAlignment.CENTER));
 
@@ -111,12 +114,12 @@ public class ExportService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] exportToExcel(Long accountId, LocalDate startDate, LocalDate endDate) throws IOException {
-        log.info("Exporting transactions to Excel for account {} from {} to {}", accountId, startDate, endDate);
+    public byte[] exportToExcel(TransactionFilter filter) throws IOException {
+        log.info("Exporting transactions to Excel for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "date"));
 
         var workbook = new XSSFWorkbook();
         var sheet = workbook.createSheet("Transactions");
@@ -192,14 +195,14 @@ public class ExportService {
             return "";
         }
         return transaction.getResponsibleUsers().stream()
-                .map(user -> user.getName())
+                .map(User::getName)
                 .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private BigDecimal[] calculateSummary(List<Transaction> transactions) {
         var income = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) > 0)
                 .map(Transaction::getValue)
+                .filter(value -> value.compareTo(BigDecimal.ZERO) > 0)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var expense = transactions.stream()

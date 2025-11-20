@@ -1,6 +1,9 @@
 package com.relyon.credflow.service;
 
-import com.relyon.credflow.model.budget.*;
+import com.relyon.credflow.model.budget.Budget;
+import com.relyon.credflow.model.budget.BudgetPreferencesResponseDTO;
+import com.relyon.credflow.model.budget.BudgetType;
+import com.relyon.credflow.model.budget.WarningLevel;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.user.User;
@@ -9,9 +12,12 @@ import com.relyon.credflow.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,7 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,8 +77,7 @@ class BudgetTrackingServiceTest {
 
         when(budgetRepository.findByIdAndAccountId(1L, accountId)).thenReturn(Optional.of(budget));
         when(budgetPreferencesService.getPreferencesForAccount(accountId, null)).thenReturn(defaultPreferences);
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted()))).thenReturn(transactions);
 
         var result = budgetTrackingService.trackBudget(1L, accountId);
 
@@ -95,8 +100,7 @@ class BudgetTrackingServiceTest {
 
         when(budgetRepository.findByIdAndAccountId(1L, accountId)).thenReturn(Optional.of(budget));
         when(budgetPreferencesService.getPreferencesForAccount(accountId, null)).thenReturn(defaultPreferences);
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted()))).thenReturn(transactions);
 
         var result = budgetTrackingService.trackBudget(1L, accountId);
 
@@ -121,8 +125,7 @@ class BudgetTrackingServiceTest {
 
         when(budgetRepository.findByIdAndAccountId(1L, accountId)).thenReturn(Optional.of(budget));
         when(budgetPreferencesService.getPreferencesForAccount(accountId, null)).thenReturn(defaultPreferences);
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted()))).thenReturn(transactions);
 
         var result = budgetTrackingService.trackBudget(1L, accountId);
 
@@ -157,8 +160,7 @@ class BudgetTrackingServiceTest {
 
         when(budgetRepository.findByIdAndAccountId(1L, accountId)).thenReturn(Optional.of(budget));
         when(budgetPreferencesService.getPreferencesForAccount(accountId, null)).thenReturn(defaultPreferences);
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted()))).thenReturn(transactions);
 
         var result = budgetTrackingService.trackBudget(1L, accountId);
 
@@ -187,8 +189,7 @@ class BudgetTrackingServiceTest {
 
         when(budgetRepository.findByIdAndAccountId(1L, accountId)).thenReturn(Optional.of(budget));
         when(budgetPreferencesService.getPreferencesForAccount(accountId, 5L)).thenReturn(defaultPreferences);
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted()))).thenReturn(transactions);
 
         var result = budgetTrackingService.trackBudget(1L, accountId);
 

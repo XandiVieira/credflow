@@ -2,15 +2,11 @@ package com.relyon.credflow.model.user;
 
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDateTime;
 
 @Entity
 @EqualsAndHashCode(callSuper = true)
@@ -23,10 +19,20 @@ public class User extends BaseEntity {
 
     @ManyToOne
     private Account account;
+
     private String name;
+
     @Column(nullable = false, unique = true)
     private String email;
+
     private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private UserRole role = UserRole.MEMBER;
+
     private String passwordResetToken;
-    private java.time.LocalDateTime resetTokenExpiry;
+
+    private LocalDateTime resetTokenExpiry;
 }

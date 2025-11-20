@@ -39,8 +39,10 @@ public class UserService {
 
         if (dto.getInviteCode() != null && !dto.getInviteCode().isBlank()) {
             user.setAccount(accountService.findByInviteCode(dto.getInviteCode()));
+            user.setRole(com.relyon.credflow.model.user.UserRole.MEMBER);
         } else {
             user.setAccount(accountService.createDefaultFor(user));
+            user.setRole(com.relyon.credflow.model.user.UserRole.OWNER);
         }
 
         try {

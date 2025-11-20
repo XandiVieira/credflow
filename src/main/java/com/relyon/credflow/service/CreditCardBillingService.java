@@ -1,6 +1,5 @@
 package com.relyon.credflow.service;
 
-import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionFilter;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -43,6 +41,8 @@ public class CreditCardBillingService {
                 null,
                 null,
                 List.of(creditCardId),
+                null,
+                null,
                 true
         );
 
@@ -78,6 +78,8 @@ public class CreditCardBillingService {
                 null,
                 null,
                 List.of(creditCardId),
+                null,
+                null,
                 true
         );
 

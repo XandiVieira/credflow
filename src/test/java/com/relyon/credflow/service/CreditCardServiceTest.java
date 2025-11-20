@@ -5,6 +5,7 @@ import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
 import com.relyon.credflow.model.mapper.CreditCardMapper;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.repository.AccountRepository;
 import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class CreditCardServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private AccountRepository accountRepository;
 
     @Mock
     private CreditCardBillingService billingService;
@@ -158,6 +162,7 @@ class CreditCardServiceTest {
     void create_whenHolderExists_shouldCreateCreditCard() {
         var accountId = 1L;
         var holderId = 10L;
+        var account = Account.builder().id(accountId).build();
         var holder = User.builder().id(holderId).name("John Doe").build();
 
         var card = CreditCard.builder()
@@ -174,10 +179,11 @@ class CreditCardServiceTest {
         var savedCard = CreditCard.builder()
                 .id(1L)
                 .nickname("Visa Gold")
-                .account(Account.builder().id(accountId).build())
+                .account(account)
                 .holder(holder)
                 .build();
 
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
         when(userRepository.findByIdAndAccountId(holderId, accountId)).thenReturn(Optional.of(holder));
         when(creditCardRepository.save(any(CreditCard.class))).thenReturn(savedCard);
 
@@ -188,6 +194,7 @@ class CreditCardServiceTest {
         assertThat(result.getAccount().getId()).isEqualTo(accountId);
         assertThat(result.getHolder()).isEqualTo(holder);
 
+        verify(accountRepository).findById(accountId);
         verify(userRepository).findByIdAndAccountId(holderId, accountId);
         verify(creditCardRepository).save(card);
     }
@@ -196,11 +203,13 @@ class CreditCardServiceTest {
     void create_whenHolderNotFound_shouldThrowException() {
         var accountId = 1L;
         var holderId = 999L;
+        var account = Account.builder().id(accountId).build();
 
         var card = CreditCard.builder()
                 .nickname("Visa Gold")
                 .build();
 
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
         when(userRepository.findByIdAndAccountId(holderId, accountId)).thenReturn(Optional.empty());
         when(translationService.translateMessage("creditCard.holderNotFound"))
                 .thenReturn("Holder not found");
@@ -209,6 +218,7 @@ class CreditCardServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Holder not found");
 
+        verify(accountRepository).findById(accountId);
         verify(userRepository).findByIdAndAccountId(holderId, accountId);
         verify(translationService).translateMessage("creditCard.holderNotFound");
         verifyNoInteractions(creditCardRepository);
@@ -218,11 +228,13 @@ class CreditCardServiceTest {
     void create_whenHolderFromDifferentAccount_shouldThrowException() {
         var accountId = 1L;
         var holderId = 10L;
+        var account = Account.builder().id(accountId).build();
 
         var card = CreditCard.builder()
                 .nickname("Visa Gold")
                 .build();
 
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
         when(userRepository.findByIdAndAccountId(holderId, accountId)).thenReturn(Optional.empty());
         when(translationService.translateMessage("creditCard.holderNotFound"))
                 .thenReturn("Holder not found");
@@ -230,6 +242,7 @@ class CreditCardServiceTest {
         assertThatThrownBy(() -> service.create(card, accountId, holderId))
                 .isInstanceOf(IllegalArgumentException.class);
 
+        verify(accountRepository).findById(accountId);
         verify(userRepository).findByIdAndAccountId(holderId, accountId);
     }
 

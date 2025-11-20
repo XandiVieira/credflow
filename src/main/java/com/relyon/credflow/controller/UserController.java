@@ -1,11 +1,7 @@
 package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.UserMapper;
-import com.relyon.credflow.model.user.AuthenticatedUser;
-import com.relyon.credflow.model.user.User;
-import com.relyon.credflow.model.user.UserRequestDTO;
-import com.relyon.credflow.model.user.UserResponseDTO;
-import com.relyon.credflow.model.user.UserSelectDTO;
+import com.relyon.credflow.model.user.*;
 import com.relyon.credflow.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByAccountId(Long accountId);
@@ -14,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByIdAndAccountId(Long id, Long accountId);
 
     Optional<User> findByPasswordResetToken(String token);
+
+    List<User> findAllByIdInAndAccountId(Set<Long> ids, Long accountId);
 }

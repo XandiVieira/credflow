@@ -3,7 +3,6 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.exception.ResourceAlreadyExistsException;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.budget.Budget;
-import com.relyon.credflow.model.budget.BudgetType;
 import com.relyon.credflow.repository.BudgetRepository;
 import com.relyon.credflow.repository.CategoryRepository;
 import com.relyon.credflow.repository.UserRepository;

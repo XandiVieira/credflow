@@ -129,7 +129,9 @@ public class AccountController {
         return ResponseEntity.ok(Map.of("message", "Invitation sent successfully"));
     }
 
-    public record JoinAccountRequest(@NotBlank String inviteCode) {}
+    public record JoinAccountRequest(@NotBlank String inviteCode) {
+    }
 
-    public record SendInvitationRequest(@NotBlank @Email String email) {}
+    public record SendInvitationRequest(@NotBlank @Email String email) {
+    }
 }

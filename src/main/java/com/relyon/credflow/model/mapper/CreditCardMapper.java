@@ -4,7 +4,8 @@ import com.relyon.credflow.configuration.MapStructCentralConfig;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardRequestDTO;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
-import org.mapstruct.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(config = MapStructCentralConfig.class)
 public interface CreditCardMapper {
@@ -19,6 +20,7 @@ public interface CreditCardMapper {
     CreditCardResponseDTO toDTO(CreditCard entity);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)

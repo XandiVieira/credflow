@@ -7,6 +7,7 @@ import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
 import com.relyon.credflow.model.credit_card.CreditCardSelectDTO;
 import com.relyon.credflow.model.mapper.CreditCardMapper;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.repository.AccountRepository;
 import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class CreditCardService {
     private final CreditCardRepository creditCardRepository;
     private final CreditCardMapper creditCardMapper;
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final CreditCardBillingService billingService;
     private final LocalizedMessageTranslationService translationService;
 
@@ -48,10 +50,13 @@ public class CreditCardService {
     public CreditCard create(CreditCard creditCard, Long accountId, Long holderId) {
         log.info("Creating credit card for account {} with holder {}", accountId, holderId);
 
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("resource.account.notFound", accountId));
+
         User holder = userRepository.findByIdAndAccountId(holderId, accountId)
                 .orElseThrow(() -> new IllegalArgumentException(translationService.translateMessage("creditCard.holderNotFound")));
 
-        creditCard.setAccount(Account.builder().id(accountId).build());
+        creditCard.setAccount(account);
         creditCard.setHolder(holder);
         return creditCardRepository.save(creditCard);
     }

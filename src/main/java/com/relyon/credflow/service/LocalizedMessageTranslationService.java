@@ -35,7 +35,7 @@ public class LocalizedMessageTranslationService {
      * Translates a message key with arguments to the current locale.
      *
      * @param messageKey the message key
-     * @param arguments optional arguments for parameterized messages
+     * @param arguments  optional arguments for parameterized messages
      * @return the translated message
      */
     public String translateMessage(String messageKey, Object... arguments) {

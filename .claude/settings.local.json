@@ -35,7 +35,13 @@
       "Bash(cmd /c \".\\mvnw.cmd test -Dtest=DashboardServiceTest\")",
       "Bash(cmd /c \".\\mvnw.cmd test -Dtest=ReportControllerIT\")",
       "Bash(cmd /c \"mvnw.cmd test -Dtest=ReportControllerIT\")",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(cmd /c \"mvnw.cmd test -Dtest=CreditCardControllerIT#create_whenValidRequest_shouldReturn200WithDTO\")",
+      "Bash(cmd /c \"mvnw.cmd clean test\")",
+      "Bash(cmd /c \"mvnw.cmd test -Dtest=CreditCardControllerIT\")",
+      "Bash(cmd /c \"dir mvnw*\")",
+      "Bash(cmd /c \"mvnw.cmd test -Dtest=InstallmentGroupServiceTest\")",
+      "Bash(cmd /c \".\\mvnw.cmd test -Dtest=InstallmentGroupServiceTest\")"
     ],
     "deny": [],
     "ask": []

@@ -10,7 +10,7 @@ public class ResourceAlreadyExistsException extends DomainException {
      * Creates a ResourceAlreadyExistsException with a message key and arguments.
      *
      * @param messageKey the i18n message key
-     * @param arguments optional arguments for parameterized messages
+     * @param arguments  optional arguments for parameterized messages
      */
     public ResourceAlreadyExistsException(String messageKey, Object... arguments) {
         super(messageKey, arguments);

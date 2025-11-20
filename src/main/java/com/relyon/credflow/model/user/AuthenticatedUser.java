@@ -4,9 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.List;
 
 @Getter
 @Setter
@@ -18,10 +20,23 @@ public class AuthenticatedUser implements UserDetails {
     private final String email;
     private final String name;
     private final String password;
+    private final UserRole role;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    public boolean isOwner() {
+        return role == UserRole.OWNER;
+    }
+
+    public boolean isMember() {
+        return role == UserRole.MEMBER || role == UserRole.OWNER;
+    }
+
+    public boolean isReadOnly() {
+        return role == UserRole.READONLY;
     }
 
     @Override

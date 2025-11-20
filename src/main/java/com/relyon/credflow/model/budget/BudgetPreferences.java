@@ -7,8 +7,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.math.BigDecimal;
-
 @Entity
 @Table(name = "budget_preferences", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"account_id", "user_id"})
@@ -63,7 +61,5 @@ public class BudgetPreferences extends BaseEntity {
     private Integer projectedWarningMinDays = 5;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private Account account;
 }

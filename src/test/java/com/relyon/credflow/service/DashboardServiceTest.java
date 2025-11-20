@@ -3,20 +3,24 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,18 +57,13 @@ class DashboardServiceTest {
                 createTransaction(5L, LocalDate.of(2025, 2, 5), BigDecimal.valueOf(-50), "Future Bill", category1, creditCard)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenAnswer(invocation -> {
-            LocalDate start = invocation.getArgument(3);
-            LocalDate end = invocation.getArgument(4);
-            if (start.equals(startDate) && end.equals(endDate)) {
-                return transactions.subList(0, 4);
-            } else {
-                return List.of(transactions.get(4));
-            }
-        });
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions.subList(0, 4))
+                .thenReturn(List.of(transactions.get(4)));
 
-        var summary = dashboardService.getDashboardSummary(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var summary = dashboardService.getDashboardSummary(filter);
 
         assertThat(summary.getTotalIncome()).isEqualByComparingTo(BigDecimal.valueOf(1000));
         assertThat(summary.getTotalExpense()).isEqualByComparingTo(BigDecimal.valueOf(450));
@@ -84,10 +83,12 @@ class DashboardServiceTest {
 
     @Test
     void getDashboardSummary_withNoTransactions_shouldReturnZeros() {
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(List.of());
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(List.of());
 
-        var summary = dashboardService.getDashboardSummary(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var summary = dashboardService.getDashboardSummary(filter);
 
         assertThat(summary.getTotalIncome()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(summary.getTotalExpense()).isEqualByComparingTo(BigDecimal.ZERO);
@@ -103,18 +104,13 @@ class DashboardServiceTest {
                 createTransaction(2L, LocalDate.of(2025, 1, 15), BigDecimal.valueOf(500), "Bonus", null, null)
         );
 
-        when(transactionRepository.search(any(), isNull(), isNull(), any(), any(),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenAnswer(invocation -> {
-            LocalDate start = invocation.getArgument(3);
-            LocalDate end = invocation.getArgument(4);
-            if (start.equals(startDate) && end.equals(endDate)) {
-                return transactions;
-            } else {
-                return List.of();
-            }
-        });
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions)
+                .thenReturn(List.of());
 
-        var summary = dashboardService.getDashboardSummary(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var summary = dashboardService.getDashboardSummary(filter);
 
         assertThat(summary.getTotalIncome()).isEqualByComparingTo(BigDecimal.valueOf(1500));
         assertThat(summary.getTotalExpense()).isEqualByComparingTo(BigDecimal.ZERO);
@@ -132,10 +128,12 @@ class DashboardServiceTest {
                 createTransaction(4L, LocalDate.of(2025, 1, 10), BigDecimal.valueOf(500), "Income", null, null)
         );
 
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), eq(startDate), eq(endDate),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var trend = dashboardService.getExpenseTrend(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var trend = dashboardService.getExpenseTrend(filter);
 
         assertThat(trend.getDataPoints()).hasSize(2);
 
@@ -158,10 +156,12 @@ class DashboardServiceTest {
                 createTransaction(1L, LocalDate.of(2025, 1, 5), BigDecimal.valueOf(1000), "Income", null, null)
         );
 
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), eq(startDate), eq(endDate),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var trend = dashboardService.getExpenseTrend(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var trend = dashboardService.getExpenseTrend(filter);
 
         assertThat(trend.getDataPoints()).isEmpty();
     }
@@ -180,10 +180,12 @@ class DashboardServiceTest {
                 createTransaction(5L, LocalDate.of(2025, 1, 25), BigDecimal.valueOf(-200), "Taxi", category2, null)
         );
 
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), eq(startDate), eq(endDate),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var distribution = dashboardService.getCategoryDistribution(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var distribution = dashboardService.getCategoryDistribution(filter);
 
         assertThat(distribution.getTotal()).isEqualByComparingTo(BigDecimal.valueOf(1000));
         assertThat(distribution.getSlices()).hasSize(3);
@@ -217,10 +219,12 @@ class DashboardServiceTest {
                 createTransaction(1L, LocalDate.of(2025, 1, 5), BigDecimal.valueOf(-100), "Uncategorized", null, null)
         );
 
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), eq(startDate), eq(endDate),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var distribution = dashboardService.getCategoryDistribution(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var distribution = dashboardService.getCategoryDistribution(filter);
 
         assertThat(distribution.getTotal()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(distribution.getSlices()).isEmpty();
@@ -234,10 +238,12 @@ class DashboardServiceTest {
                 createTransaction(2L, LocalDate.of(2025, 1, 10), BigDecimal.valueOf(-700), "Restaurant", category, null)
         );
 
-        when(transactionRepository.search(eq(accountId), isNull(), isNull(), eq(startDate), eq(endDate),
-                isNull(), isNull(), isNull(), isNull(), isNull())).thenReturn(transactions);
+        when(transactionRepository.findAll(ArgumentMatchers.<Specification<Transaction>>any(), eq(Sort.unsorted())))
+                .thenReturn(transactions);
 
-        var distribution = dashboardService.getCategoryDistribution(accountId, startDate, endDate);
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var distribution = dashboardService.getCategoryDistribution(filter);
 
         assertThat(distribution.getTotal()).isEqualByComparingTo(BigDecimal.valueOf(1000));
         assertThat(distribution.getSlices()).hasSize(1);

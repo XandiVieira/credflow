@@ -22,7 +22,7 @@ public class ErrorBody {
      * Creates an ErrorBody for a single error message.
      *
      * @param message the error message
-     * @param status HTTP status code
+     * @param status  HTTP status code
      * @return ErrorBody instance
      */
     public static ErrorBody from(String message, int status) {
@@ -44,8 +44,8 @@ public class ErrorBody {
      * Creates an ErrorBody with both a message and multiple errors.
      *
      * @param message main error message
-     * @param errors list of additional error messages
-     * @param status HTTP status code
+     * @param errors  list of additional error messages
+     * @param status  HTTP status code
      * @return ErrorBody instance
      */
     public static ErrorBody from(String message, List<String> errors, int status) {

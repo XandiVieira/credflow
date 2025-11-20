@@ -3,9 +3,12 @@ package com.relyon.credflow.service;
 import com.relyon.credflow.model.dashboard.*;
 import com.relyon.credflow.model.dashboard.CategoryDistributionDTO.CategorySliceDTO;
 import com.relyon.credflow.model.dashboard.TimeSeriesDataDTO.TimeSeriesPointDTO;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.repository.TransactionRepository;
+import com.relyon.credflow.specification.TransactionSpecFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,12 +32,12 @@ public class DashboardService {
     };
 
     @Transactional(readOnly = true)
-    public DashboardSummaryDTO getDashboardSummary(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating dashboard summary for account {} from {} to {}", accountId, startDate, endDate);
+    public DashboardSummaryDTO getDashboardSummary(TransactionFilter filter) {
+        log.info("Generating dashboard summary for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var totalIncome = transactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) > 0)
@@ -49,8 +52,8 @@ public class DashboardService {
         var balance = totalIncome.subtract(totalExpense);
 
         var topCategories = calculateTopCategories(transactions, totalExpense);
-        var upcomingBills = calculateUpcomingBills(accountId);
-        var balanceTrend = calculateBalanceTrend(accountId, startDate, endDate);
+        var upcomingBills = calculateUpcomingBills(filter.accountId());
+        var balanceTrend = calculateBalanceTrend(filter);
 
         return DashboardSummaryDTO.builder()
                 .totalIncome(totalIncome)
@@ -107,9 +110,10 @@ public class DashboardService {
         var today = LocalDate.now();
         var futureDate = today.plusDays(30);
 
-        var upcomingTransactions = transactionRepository.search(
-                accountId, null, null, today, futureDate, null, null, null, null, null
-        );
+        var filter = new TransactionFilter(accountId, today, futureDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var spec = TransactionSpecFactory.from(filter);
+        var upcomingTransactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         return upcomingTransactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
@@ -129,10 +133,9 @@ public class DashboardService {
                 .toList();
     }
 
-    private List<BalanceTrendDTO> calculateBalanceTrend(Long accountId, LocalDate startDate, LocalDate endDate) {
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+    private List<BalanceTrendDTO> calculateBalanceTrend(TransactionFilter filter) {
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var groupedByDate = transactions.stream()
                 .collect(Collectors.groupingBy(t -> t.getDate()));
@@ -140,8 +143,8 @@ public class DashboardService {
         var trendList = new ArrayList<BalanceTrendDTO>();
         var runningBalance = BigDecimal.ZERO;
 
-        var currentDate = startDate;
-        while (!currentDate.isAfter(endDate)) {
+        var currentDate = filter.fromDate();
+        while (!currentDate.isAfter(filter.toDate())) {
             var dailyTransactions = groupedByDate.getOrDefault(currentDate, List.of());
 
             var dailyIncome = dailyTransactions.stream()
@@ -170,12 +173,12 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    public TimeSeriesDataDTO getExpenseTrend(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating expense trend for account {} from {} to {}", accountId, startDate, endDate);
+    public TimeSeriesDataDTO getExpenseTrend(TransactionFilter filter) {
+        log.info("Generating expense trend for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var groupedByDate = transactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
@@ -202,12 +205,12 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    public CategoryDistributionDTO getCategoryDistribution(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating category distribution for account {} from {} to {}", accountId, startDate, endDate);
+    public CategoryDistributionDTO getCategoryDistribution(TransactionFilter filter) {
+        log.info("Generating category distribution for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)

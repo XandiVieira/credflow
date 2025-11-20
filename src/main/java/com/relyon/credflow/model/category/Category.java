@@ -38,13 +38,9 @@ public class Category extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_category_id")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private Category parentCategory;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private Account account;
 
     public Category(String name, Account account) {

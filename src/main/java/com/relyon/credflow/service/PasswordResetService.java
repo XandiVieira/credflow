@@ -1,7 +1,6 @@
 package com.relyon.credflow.service;
 
 import com.relyon.credflow.exception.ResourceNotFoundException;
-import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

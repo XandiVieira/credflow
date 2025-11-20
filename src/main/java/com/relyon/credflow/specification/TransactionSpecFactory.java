@@ -2,16 +2,19 @@ package com.relyon.credflow.specification;
 
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionFilter;
+import com.relyon.credflow.model.transaction.TransactionSource;
+import com.relyon.credflow.model.transaction.TransactionType;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
-import jakarta.persistence.criteria.JoinType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-public class TransactionSpecFactory  {
+public class TransactionSpecFactory {
 
-    private TransactionSpecFactory() {}
+    private TransactionSpecFactory() {
+    }
 
     public static Specification<Transaction> from(TransactionFilter f) {
         return Specification.allOf(
@@ -25,6 +28,8 @@ public class TransactionSpecFactory  {
                 anyResponsibleIn(f.responsibleUserIds()),
                 categoryIn(f.categoryIds()),
                 creditCardIn(f.creditCardIds()),
+                transactionTypeIn(f.transactionTypes()),
+                transactionSourceIn(f.transactionSources()),
                 filterReversals(f.includeReversals())
         );
     }
@@ -32,18 +37,23 @@ public class TransactionSpecFactory  {
     private static Specification<Transaction> accountIdEq(Long accountId) {
         return (root, q, cb) -> accountId == null ? null : cb.equal(root.get("account").get("id"), accountId);
     }
+
     private static Specification<Transaction> dateFrom(LocalDate from) {
         return (root, q, cb) -> from == null ? null : cb.greaterThanOrEqualTo(root.get("date"), from);
     }
+
     private static Specification<Transaction> dateTo(LocalDate to) {
         return (root, q, cb) -> to == null ? null : cb.lessThanOrEqualTo(root.get("date"), to);
     }
+
     private static Specification<Transaction> amountGte(BigDecimal min) {
         return (root, q, cb) -> min == null ? null : cb.greaterThanOrEqualTo(root.get("value"), min);
     }
+
     private static Specification<Transaction> amountLte(BigDecimal max) {
         return (root, q, cb) -> max == null ? null : cb.lessThanOrEqualTo(root.get("value"), max);
     }
+
     private static Specification<Transaction> anyResponsibleIn(List<Long> userIds) {
         return (root, q, cb) -> {
             if (userIds == null || userIds.isEmpty()) return null;
@@ -53,6 +63,7 @@ public class TransactionSpecFactory  {
             return join.get("id").in(userIds);
         };
     }
+
     private static Specification<Transaction> categoryIn(List<Long> categoryIds) {
         return (root, q, cb) -> {
             if (categoryIds == null || categoryIds.isEmpty()) return null;
@@ -62,17 +73,20 @@ public class TransactionSpecFactory  {
             return join.get("id").in(categoryIds);
         };
     }
+
     private static Specification<Transaction> likeLower(String field, String value) {
         return (root, q, cb) -> {
             var p = toLike(value);
             return p == null ? null : cb.like(cb.lower(root.get(field)), p);
         };
     }
+
     private static String toLike(String s) {
         if (s == null) return null;
         s = s.trim();
         return s.isEmpty() ? null : "%" + s.toLowerCase() + "%";
     }
+
     private static Specification<Transaction> creditCardIn(List<Long> creditCardIds) {
         return (root, q, cb) -> {
             if (creditCardIds == null || creditCardIds.isEmpty()) return null;
@@ -80,6 +94,20 @@ public class TransactionSpecFactory  {
             q.distinct(true);
             var join = root.join("creditCard", JoinType.LEFT);
             return join.get("id").in(creditCardIds);
+        };
+    }
+
+    private static Specification<Transaction> transactionTypeIn(List<TransactionType> types) {
+        return (root, q, cb) -> {
+            if (types == null || types.isEmpty()) return null;
+            return root.get("transactionType").in(types);
+        };
+    }
+
+    private static Specification<Transaction> transactionSourceIn(List<TransactionSource> sources) {
+        return (root, q, cb) -> {
+            if (sources == null || sources.isEmpty()) return null;
+            return root.get("source").in(sources);
         };
     }
 

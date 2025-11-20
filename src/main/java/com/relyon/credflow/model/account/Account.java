@@ -23,18 +23,12 @@ import java.util.List;
 public class Account extends BaseEntity {
 
     @OneToMany(mappedBy = "account")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private List<User> users;
 
     @OneToMany(mappedBy = "account")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private List<DescriptionMapping> descriptionMappings;
 
     @OneToMany(mappedBy = "account")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private List<Transaction> transactions;
 
     @ToString.Include

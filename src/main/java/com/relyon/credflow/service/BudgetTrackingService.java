@@ -1,6 +1,9 @@
 package com.relyon.credflow.service;
 
-import com.relyon.credflow.model.budget.*;
+import com.relyon.credflow.model.budget.Budget;
+import com.relyon.credflow.model.budget.BudgetPreferencesResponseDTO;
+import com.relyon.credflow.model.budget.BudgetTrackingDTO;
+import com.relyon.credflow.model.budget.WarningLevel;
 import com.relyon.credflow.repository.BudgetRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -176,9 +179,10 @@ public class BudgetTrackingService {
     }
 
     private BigDecimal calculateSpend(Budget budget, LocalDate startDate, LocalDate endDate, Long accountId) {
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var filter = new com.relyon.credflow.model.transaction.TransactionFilter(accountId, startDate, endDate, null, null,
+                null, null, null, null, null, null, null, false);
+        var spec = com.relyon.credflow.specification.TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, org.springframework.data.domain.Sort.unsorted());
 
         return transactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
@@ -192,16 +196,14 @@ public class BudgetTrackingService {
             case ACCOUNT_WIDE -> true;
             case CATEGORY_SPECIFIC ->
                     transaction.getCategory() != null && transaction.getCategory().getId().equals(budget.getCategory().getId());
-            case USER_SPECIFIC ->
+            case USER_SPECIFIC -> transaction.getResponsibleUsers() != null &&
+                    transaction.getResponsibleUsers().stream()
+                            .anyMatch(u -> u.getId().equals(budget.getUser().getId()));
+            case CATEGORY_USER_SPECIFIC -> transaction.getCategory() != null &&
+                    transaction.getCategory().getId().equals(budget.getCategory().getId()) &&
                     transaction.getResponsibleUsers() != null &&
-                            transaction.getResponsibleUsers().stream()
-                                    .anyMatch(u -> u.getId().equals(budget.getUser().getId()));
-            case CATEGORY_USER_SPECIFIC ->
-                    transaction.getCategory() != null &&
-                            transaction.getCategory().getId().equals(budget.getCategory().getId()) &&
-                            transaction.getResponsibleUsers() != null &&
-                            transaction.getResponsibleUsers().stream()
-                                    .anyMatch(u -> u.getId().equals(budget.getUser().getId()));
+                    transaction.getResponsibleUsers().stream()
+                            .anyMatch(u -> u.getId().equals(budget.getUser().getId()));
         };
     }
 

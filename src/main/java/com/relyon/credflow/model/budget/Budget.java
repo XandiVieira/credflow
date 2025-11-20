@@ -52,7 +52,5 @@ public class Budget extends BaseEntity {
     private BigDecimal rolledOverAmount = BigDecimal.ZERO;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     private Account account;
 }

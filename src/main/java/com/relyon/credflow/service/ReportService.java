@@ -9,18 +9,23 @@ import com.relyon.credflow.model.report.MonthComparisonDTO.ComparisonSummaryDTO;
 import com.relyon.credflow.model.report.MonthComparisonDTO.MonthlyDataDTO;
 import com.relyon.credflow.model.report.UserReportDTO;
 import com.relyon.credflow.model.report.UserReportDTO.UserExpenseDTO;
+import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.repository.TransactionRepository;
+import com.relyon.credflow.specification.TransactionSpecFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,12 +36,12 @@ public class ReportService {
     private final TransactionRepository transactionRepository;
 
     @Transactional(readOnly = true)
-    public CategoryReportDTO getCategoryReport(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating category report for account {} from {} to {}", accountId, startDate, endDate);
+    public CategoryReportDTO getCategoryReport(TransactionFilter filter) {
+        log.info("Generating category report for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
@@ -63,7 +68,7 @@ public class ReportService {
 
                     var percentage = total.compareTo(BigDecimal.ZERO) > 0
                             ? amount.multiply(BigDecimal.valueOf(100))
-                                    .divide(total, 2, RoundingMode.HALF_UP)
+                            .divide(total, 2, RoundingMode.HALF_UP)
                             : BigDecimal.ZERO;
 
                     var average = count > 0
@@ -119,7 +124,7 @@ public class ReportService {
                         var newCount = cat.getTransactionCount() + rollupData.getValue();
                         var newPercentage = total.compareTo(BigDecimal.ZERO) > 0
                                 ? newAmount.multiply(BigDecimal.valueOf(100))
-                                        .divide(total, 2, RoundingMode.HALF_UP)
+                                .divide(total, 2, RoundingMode.HALF_UP)
                                 : BigDecimal.ZERO;
                         var newAverage = newCount > 0
                                 ? newAmount.divide(BigDecimal.valueOf(newCount), 2, RoundingMode.HALF_UP)
@@ -143,12 +148,12 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public UserReportDTO getUserReport(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating user report for account {} from {} to {}", accountId, startDate, endDate);
+    public UserReportDTO getUserReport(TransactionFilter filter) {
+        log.info("Generating user report for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
                 .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
@@ -165,7 +170,7 @@ public class ReportService {
             var transactionAmount = transaction.getValue().abs();
             for (var user : transaction.getResponsibleUsers()) {
                 userExpenseMap.computeIfAbsent(user.getId(),
-                        userId -> new UserExpenseAccumulator(user.getId(), user.getName()))
+                                userId -> new UserExpenseAccumulator(user.getId(), user.getName()))
                         .addTransaction(transactionAmount);
             }
         }
@@ -174,7 +179,7 @@ public class ReportService {
                 .map(accumulator -> {
                     var percentage = total.compareTo(BigDecimal.ZERO) > 0
                             ? accumulator.amount.multiply(BigDecimal.valueOf(100))
-                                    .divide(total, 2, RoundingMode.HALF_UP)
+                            .divide(total, 2, RoundingMode.HALF_UP)
                             : BigDecimal.ZERO;
 
                     return UserExpenseDTO.builder()
@@ -212,12 +217,12 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public CreditCardReportDTO getCreditCardReport(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating credit card report for account {} from {} to {}", accountId, startDate, endDate);
+    public CreditCardReportDTO getCreditCardReport(TransactionFilter filter) {
+        log.info("Generating credit card report for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
                 .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
@@ -244,7 +249,7 @@ public class ReportService {
 
                     var percentage = total.compareTo(BigDecimal.ZERO) > 0
                             ? amount.multiply(BigDecimal.valueOf(100))
-                                    .divide(total, 2, RoundingMode.HALF_UP)
+                            .divide(total, 2, RoundingMode.HALF_UP)
                             : BigDecimal.ZERO;
 
                     var average = count > 0
@@ -270,12 +275,12 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public MonthComparisonDTO getMonthComparison(Long accountId, LocalDate startDate, LocalDate endDate) {
-        log.info("Generating month comparison for account {} from {} to {}", accountId, startDate, endDate);
+    public MonthComparisonDTO getMonthComparison(TransactionFilter filter) {
+        log.info("Generating month comparison for account {} from {} to {}",
+                filter.accountId(), filter.fromDate(), filter.toDate());
 
-        var transactions = transactionRepository.search(
-                accountId, null, null, startDate, endDate, null, null, null, null, null
-        );
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var monthlyGroups = transactions.stream()
                 .collect(Collectors.groupingBy(transaction -> YearMonth.from(transaction.getDate())));

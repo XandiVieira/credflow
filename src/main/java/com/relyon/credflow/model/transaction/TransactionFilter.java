@@ -15,5 +15,8 @@ public record TransactionFilter(
         List<Long> responsibleUserIds,
         List<Long> categoryIds,
         List<Long> creditCardIds,
+        List<TransactionType> transactionTypes,
+        List<TransactionSource> transactionSources,
         Boolean includeReversals
-) {}
+) {
+}

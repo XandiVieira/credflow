@@ -1,10 +1,7 @@
 package com.relyon.credflow.service;
 
 import com.relyon.credflow.configuration.JwtUtil;
-import com.relyon.credflow.model.user.AuthRequest;
-import com.relyon.credflow.model.user.AuthenticatedUser;
-import com.relyon.credflow.model.user.User;
-import com.relyon.credflow.model.user.UserRequestDTO;
+import com.relyon.credflow.model.user.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,7 +70,7 @@ class AuthenticationServiceTest {
         req.setEmail("alex@example.com");
         req.setPassword("s3cr3t");
 
-        var principal = new AuthenticatedUser(42L, 1L, "alex@example.com", "Alex", "myPassword");
+        var principal = new AuthenticatedUser(42L, 1L, "alex@example.com", "Alex", "myPassword", UserRole.OWNER);
 
         var authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(principal);

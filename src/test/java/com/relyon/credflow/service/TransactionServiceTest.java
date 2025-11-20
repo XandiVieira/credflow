@@ -7,7 +7,6 @@ import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionSource;
 import com.relyon.credflow.model.transaction.TransactionType;
 import com.relyon.credflow.model.user.User;
-import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import org.junit.jupiter.api.Test;
@@ -19,11 +18,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,9 +43,6 @@ class TransactionServiceTest {
 
     @Mock
     private CategoryService categoryService;
-
-    @Mock
-    private CreditCardRepository creditCardRepository;
 
     @Mock
     private RefundDetectionService refundDetectionService;
@@ -175,10 +172,10 @@ class TransactionServiceTest {
 
         transactionService.bulkDelete(transactionIds, accountId);
 
-        var captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Iterable<Transaction>> captor = ArgumentCaptor.forClass(Iterable.class);
         verify(transactionRepository).deleteAll(captor.capture());
 
-        List<Transaction> deleted = captor.getValue();
+        var deleted = (List<Transaction>) captor.getValue();
         assertEquals(3, deleted.size());
         assertTrue(deleted.contains(t1));
         assertTrue(deleted.contains(t2));

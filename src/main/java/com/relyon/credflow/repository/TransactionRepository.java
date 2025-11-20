@@ -70,4 +70,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
                                              Long creditCardId);
 
     List<Transaction> findByCsvImportHistoryId(Long csvImportHistoryId);
+
+    @EntityGraph(attributePaths = {"responsibleUsers", "category", "creditCard"})
+    List<Transaction> findByInstallmentGroupIdAndAccountId(String installmentGroupId, Long accountId);
 }
