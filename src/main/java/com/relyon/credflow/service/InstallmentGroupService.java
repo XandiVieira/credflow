@@ -8,16 +8,15 @@ import com.relyon.credflow.repository.CategoryRepository;
 import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.repository.UserRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -126,6 +125,66 @@ public class InstallmentGroupService {
                 .totalPaid(totalPaid)
                 .totalPending(totalAmount.subtract(totalPaid))
                 .installments(installments.stream().map(this::mapToResponseDTO).toList())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstallmentGroupSummaryDTO> getAllInstallmentGroups(Long accountId) {
+        log.info("Fetching all installment groups for account {}", accountId);
+
+        var allInstallments = transactionRepository.findAllInstallmentsByAccountId(accountId);
+
+        if (allInstallments.isEmpty()) {
+            return List.of();
+        }
+
+        var groupedByInstallmentGroupId = allInstallments.stream()
+                .collect(Collectors.groupingBy(
+                        Transaction::getInstallmentGroupId,
+                        LinkedHashMap::new,
+                        Collectors.toList()));
+
+        return groupedByInstallmentGroupId.entrySet().stream()
+                .map(entry -> buildSummaryDTO(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private InstallmentGroupSummaryDTO buildSummaryDTO(String groupId, List<Transaction> installments) {
+        var paidCount = 0;
+        var totalPaid = BigDecimal.ZERO;
+        var totalAmount = BigDecimal.ZERO;
+        LocalDate firstDate = null;
+        LocalDate lastDate = null;
+
+        for (var installment : installments) {
+            totalAmount = totalAmount.add(installment.getValue());
+            if (Boolean.TRUE.equals(installment.getWasEditedAfterImport())) {
+                paidCount++;
+                totalPaid = totalPaid.add(installment.getValue());
+            }
+            if (firstDate == null || installment.getDate().isBefore(firstDate)) {
+                firstDate = installment.getDate();
+            }
+            if (lastDate == null || installment.getDate().isAfter(lastDate)) {
+                lastDate = installment.getDate();
+            }
+        }
+
+        var firstInstallment = installments.getFirst();
+
+        return InstallmentGroupSummaryDTO.builder()
+                .installmentGroupId(groupId)
+                .description(firstInstallment.getDescription())
+                .totalAmount(totalAmount)
+                .totalInstallments(firstInstallment.getTotalInstallments())
+                .paidInstallments(paidCount)
+                .pendingInstallments(firstInstallment.getTotalInstallments() - paidCount)
+                .totalPaid(totalPaid)
+                .totalPending(totalAmount.subtract(totalPaid))
+                .firstInstallmentDate(firstDate)
+                .lastInstallmentDate(lastDate)
+                .categoryName(firstInstallment.getCategory() != null ? firstInstallment.getCategory().getName() : null)
+                .creditCardNickname(firstInstallment.getCreditCard() != null ? firstInstallment.getCreditCard().getNickname() : null)
                 .build();
     }
 
@@ -249,3 +308,4 @@ public class InstallmentGroupService {
         return dto;
     }
 }
+

@@ -1,5 +1,6 @@
 package com.relyon.credflow.model.account;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.transaction.Transaction;
@@ -7,10 +8,9 @@ import com.relyon.credflow.model.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
+import java.util.List;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.util.List;
 
 @Entity
 @Getter
@@ -22,12 +22,15 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Account extends BaseEntity {
 
+    @JsonIgnore
     @OneToMany(mappedBy = "account")
     private List<User> users;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "account")
     private List<DescriptionMapping> descriptionMappings;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "account")
     private List<Transaction> transactions;
 

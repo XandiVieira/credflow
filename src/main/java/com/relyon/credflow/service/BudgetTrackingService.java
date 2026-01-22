@@ -6,18 +6,21 @@ import com.relyon.credflow.model.budget.BudgetTrackingDTO;
 import com.relyon.credflow.model.budget.WarningLevel;
 import com.relyon.credflow.repository.BudgetRepository;
 import com.relyon.credflow.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import com.relyon.credflow.model.transaction.Transaction;
+import com.relyon.credflow.model.transaction.TransactionFilter;
+import com.relyon.credflow.specification.TransactionSpecFactory;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -179,31 +182,31 @@ public class BudgetTrackingService {
     }
 
     private BigDecimal calculateSpend(Budget budget, LocalDate startDate, LocalDate endDate, Long accountId) {
-        var filter = new com.relyon.credflow.model.transaction.TransactionFilter(accountId, startDate, endDate, null, null,
+        var filter = new TransactionFilter(accountId, startDate, endDate, null, null,
                 null, null, null, null, null, null, null, false);
-        var spec = com.relyon.credflow.specification.TransactionSpecFactory.from(filter);
-        var transactions = transactionRepository.findAll(spec, org.springframework.data.domain.Sort.unsorted());
+        var spec = TransactionSpecFactory.from(filter);
+        var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         return transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .filter(t -> matchesBudget(t, budget))
-                .map(t -> t.getValue().abs())
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .filter(transaction -> matchesBudget(transaction, budget))
+                .map(transaction -> transaction.getValue().abs())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private boolean matchesBudget(com.relyon.credflow.model.transaction.Transaction transaction, Budget budget) {
+    private boolean matchesBudget(Transaction transaction, Budget budget) {
         return switch (budget.getType()) {
             case ACCOUNT_WIDE -> true;
             case CATEGORY_SPECIFIC ->
                     transaction.getCategory() != null && transaction.getCategory().getId().equals(budget.getCategory().getId());
             case USER_SPECIFIC -> transaction.getResponsibleUsers() != null &&
                     transaction.getResponsibleUsers().stream()
-                            .anyMatch(u -> u.getId().equals(budget.getUser().getId()));
+                            .anyMatch(user -> user.getId().equals(budget.getUser().getId()));
             case CATEGORY_USER_SPECIFIC -> transaction.getCategory() != null &&
                     transaction.getCategory().getId().equals(budget.getCategory().getId()) &&
                     transaction.getResponsibleUsers() != null &&
                     transaction.getResponsibleUsers().stream()
-                            .anyMatch(u -> u.getId().equals(budget.getUser().getId()));
+                            .anyMatch(user -> user.getId().equals(budget.getUser().getId()));
         };
     }
 
@@ -235,7 +238,7 @@ public class BudgetTrackingService {
 
     private String buildWarningMessage(WarningLevel level, BigDecimal overspend, BigDecimal budget) {
         if (level == WarningLevel.NONE) {
-            return null;
+            return "";
         }
 
         if (overspend.compareTo(BigDecimal.ZERO) <= 0) {

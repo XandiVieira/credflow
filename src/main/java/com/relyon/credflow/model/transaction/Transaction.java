@@ -7,13 +7,12 @@ import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.csv.CsvImportHistory;
 import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "transaction")
@@ -87,6 +86,9 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "original_checksum")
     private String originalChecksum;
+
+    @Column(name = "normalized_checksum")
+    private String normalizedChecksum;
 
     @Column(name = "is_reversal", nullable = false)
     @Builder.Default

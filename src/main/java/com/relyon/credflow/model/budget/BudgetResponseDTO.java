@@ -1,10 +1,9 @@
 package com.relyon.credflow.model.budget;
 
-import lombok.Builder;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import lombok.Builder;
+import lombok.Data;
 
 @Data
 @Builder

@@ -1,17 +1,13 @@
 package com.relyon.credflow.service;
 
+import com.relyon.credflow.constant.BusinessConstants;
 import com.relyon.credflow.model.dashboard.*;
 import com.relyon.credflow.model.dashboard.CategoryDistributionDTO.CategorySliceDTO;
 import com.relyon.credflow.model.dashboard.TimeSeriesDataDTO.TimeSeriesPointDTO;
+import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.specification.TransactionSpecFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -19,6 +15,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -40,13 +41,14 @@ public class DashboardService {
         var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var totalIncome = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) > 0)
-                .map(t -> t.getValue())
+                .map(Transaction::getValue)
+                .filter(value -> value.compareTo(BigDecimal.ZERO) > 0)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var totalExpense = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .map(t -> t.getValue().abs())
+                .map(Transaction::getValue)
+                .filter(value -> value.compareTo(BigDecimal.ZERO) < 0)
+                .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var balance = totalIncome.subtract(totalExpense);
@@ -66,17 +68,17 @@ public class DashboardService {
     }
 
     private List<CategorySummaryDTO> calculateTopCategories(
-            List<com.relyon.credflow.model.transaction.Transaction> transactions,
+            List<Transaction> transactions,
             BigDecimal totalExpense) {
 
         var categoryTotals = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .filter(t -> t.getCategory() != null)
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .filter(transaction -> transaction.getCategory() != null)
                 .collect(Collectors.groupingBy(
-                        t -> t.getCategory(),
+                        Transaction::getCategory,
                         Collectors.reducing(
                                 BigDecimal.ZERO,
-                                t -> t.getValue().abs(),
+                                transaction -> transaction.getValue().abs(),
                                 BigDecimal::add
                         )
                 ));
@@ -90,7 +92,7 @@ public class DashboardService {
                             : BigDecimal.ZERO;
 
                     var count = transactions.stream()
-                            .filter(t -> t.getCategory() != null && t.getCategory().equals(entry.getKey()))
+                            .filter(transaction -> transaction.getCategory() != null && transaction.getCategory().equals(entry.getKey()))
                             .count();
 
                     return CategorySummaryDTO.builder()
@@ -102,13 +104,13 @@ public class DashboardService {
                             .build();
                 })
                 .sorted((a, b) -> b.getTotalAmount().compareTo(a.getTotalAmount()))
-                .limit(5)
+                .limit(BusinessConstants.Dashboard.TOP_CATEGORIES_LIMIT)
                 .toList();
     }
 
     private List<UpcomingBillDTO> calculateUpcomingBills(Long accountId) {
         var today = LocalDate.now();
-        var futureDate = today.plusDays(30);
+        var futureDate = today.plusDays(BusinessConstants.Dashboard.UPCOMING_BILLS_WINDOW_DAYS);
 
         var filter = new TransactionFilter(accountId, today, futureDate, null, null,
                 null, null, null, null, null, null, null, false);
@@ -116,20 +118,20 @@ public class DashboardService {
         var upcomingTransactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         return upcomingTransactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .map(t -> {
-                    var daysUntil = (int) ChronoUnit.DAYS.between(today, t.getDate());
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .map(transaction -> {
+                    var daysUntil = (int) ChronoUnit.DAYS.between(today, transaction.getDate());
                     return UpcomingBillDTO.builder()
-                            .transactionId(t.getId())
-                            .description(t.getDescription())
-                            .amount(t.getValue().abs())
-                            .dueDate(t.getDate())
-                            .creditCardNickname(t.getCreditCard() != null ? t.getCreditCard().getNickname() : null)
+                            .transactionId(transaction.getId())
+                            .description(transaction.getDescription())
+                            .amount(transaction.getValue().abs())
+                            .dueDate(transaction.getDate())
+                            .creditCardNickname(transaction.getCreditCard() != null ? transaction.getCreditCard().getNickname() : null)
                             .daysUntilDue(daysUntil)
                             .build();
                 })
                 .sorted((a, b) -> a.getDueDate().compareTo(b.getDueDate()))
-                .limit(10)
+                .limit(BusinessConstants.Dashboard.UPCOMING_BILLS_LIMIT)
                 .toList();
     }
 
@@ -138,7 +140,7 @@ public class DashboardService {
         var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var groupedByDate = transactions.stream()
-                .collect(Collectors.groupingBy(t -> t.getDate()));
+                .collect(Collectors.groupingBy(Transaction::getDate));
 
         var trendList = new ArrayList<BalanceTrendDTO>();
         var runningBalance = BigDecimal.ZERO;
@@ -148,13 +150,14 @@ public class DashboardService {
             var dailyTransactions = groupedByDate.getOrDefault(currentDate, List.of());
 
             var dailyIncome = dailyTransactions.stream()
-                    .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) > 0)
-                    .map(t -> t.getValue())
+                    .map(Transaction::getValue)
+                    .filter(value -> value.compareTo(BigDecimal.ZERO) > 0)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             var dailyExpense = dailyTransactions.stream()
-                    .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                    .map(t -> t.getValue().abs())
+                    .map(Transaction::getValue)
+                    .filter(value -> value.compareTo(BigDecimal.ZERO) < 0)
+                    .map(BigDecimal::abs)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             runningBalance = runningBalance.add(dailyIncome).subtract(dailyExpense);
@@ -181,12 +184,12 @@ public class DashboardService {
         var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var groupedByDate = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
                 .collect(Collectors.groupingBy(
-                        t -> t.getDate(),
+                        Transaction::getDate,
                         Collectors.reducing(
                                 BigDecimal.ZERO,
-                                t -> t.getValue().abs(),
+                                transaction -> transaction.getValue().abs(),
                                 BigDecimal::add
                         )
                 ));
@@ -213,20 +216,20 @@ public class DashboardService {
         var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .filter(t -> t.getCategory() != null)
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .filter(transaction -> transaction.getCategory() != null)
                 .toList();
 
         var total = expenseTransactions.stream()
-                .map(t -> t.getValue().abs())
+                .map(transaction -> transaction.getValue().abs())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var categoryTotals = expenseTransactions.stream()
                 .collect(Collectors.groupingBy(
-                        t -> t.getCategory(),
+                        Transaction::getCategory,
                         Collectors.reducing(
                                 BigDecimal.ZERO,
-                                t -> t.getValue().abs(),
+                                transaction -> transaction.getValue().abs(),
                                 BigDecimal::add
                         )
                 ));

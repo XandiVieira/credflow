@@ -8,13 +8,12 @@ import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.repository.AccountRepository;
 import com.relyon.credflow.repository.CsvImportHistoryRepository;
 import com.relyon.credflow.repository.TransactionRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +24,7 @@ public class CsvImportService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final TransactionService transactionService;
+    private final BanrisulPdfParserService banrisulPdfParserService;
     private final LocalizedMessageTranslationService translationService;
 
     @Transactional
@@ -49,6 +49,8 @@ public class CsvImportService {
             List<Transaction> imported;
             if (format == CsvImportFormat.BANRISUL) {
                 imported = transactionService.importFromBanrisulCSV(file, accountId);
+            } else if (format == CsvImportFormat.BANRISUL_CREDIT_CARD_PDF) {
+                imported = banrisulPdfParserService.importFromPdf(file, accountId);
             } else {
                 throw new IllegalArgumentException("Format not yet implemented: " + format);
             }
@@ -56,9 +58,9 @@ public class CsvImportService {
             history = csvImportHistoryRepository.save(history);
 
             var finalHistory = history;
-            imported.forEach(t -> {
-                t.setCsvImportHistory(finalHistory);
-                transactionRepository.save(t);
+            imported.forEach(transaction -> {
+                transaction.setCsvImportHistory(finalHistory);
+                transactionRepository.save(transaction);
             });
 
             history.setImportedRows(imported.size());
@@ -81,10 +83,10 @@ public class CsvImportService {
         log.info("Rolling back CSV import ID: {}", importHistoryId);
 
         var history = csvImportHistoryRepository.findById(importHistoryId)
-                .orElseThrow(() -> new ResourceNotFoundException("csv.import.notFound", importHistoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("file.import.notFound", importHistoryId));
 
         if (!history.getAccount().getId().equals(accountId)) {
-            throw new IllegalArgumentException(translationService.translateMessage("csv.import.accountMismatch"));
+            throw new IllegalArgumentException(translationService.translateMessage("file.import.accountMismatch"));
         }
 
         if (history.getStatus() == CsvImportStatus.ROLLED_BACK) {
@@ -95,7 +97,7 @@ public class CsvImportService {
         var transactions = transactionRepository.findByCsvImportHistoryId(importHistoryId);
         log.info("Found {} transactions to delete for import {}", transactions.size(), importHistoryId);
 
-        transactions.forEach(t -> transactionRepository.deleteById(t.getId()));
+        transactions.forEach(transaction -> transactionRepository.deleteById(transaction.getId()));
 
         history.setStatus(CsvImportStatus.ROLLED_BACK);
         csvImportHistoryRepository.save(history);
@@ -112,10 +114,10 @@ public class CsvImportService {
     public CsvImportHistory getImportById(Long id, Long accountId) {
         log.info("Fetching import {} for account {}", id, accountId);
         var history = csvImportHistoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("csv.import.notFound", id));
+                .orElseThrow(() -> new ResourceNotFoundException("file.import.notFound", id));
 
         if (!history.getAccount().getId().equals(accountId)) {
-            throw new IllegalArgumentException(translationService.translateMessage("csv.import.accountMismatch"));
+            throw new IllegalArgumentException(translationService.translateMessage("file.import.accountMismatch"));
         }
 
         return history;

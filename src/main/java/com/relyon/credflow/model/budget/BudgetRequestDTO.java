@@ -2,10 +2,9 @@ package com.relyon.credflow.model.budget;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import lombok.Data;
 
 @Data
 public class BudgetRequestDTO {

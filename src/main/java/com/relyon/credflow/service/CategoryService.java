@@ -8,6 +8,11 @@ import com.relyon.credflow.model.category.CategorySelectDTO;
 import com.relyon.credflow.model.mapper.CategoryMapper;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.CategoryRepository;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,12 +20,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -100,7 +99,7 @@ public class CategoryService {
 
         repository.findByNameIgnoreCaseAndAccountId(newName.toLowerCase(), accountId)
                 .filter(existing -> !existing.getId().equals(id))
-                .ifPresent(_ -> {
+                .ifPresent(existing2 -> {
                     throw new ResourceAlreadyExistsException("category.duplicate", newName);
                 });
 
@@ -178,7 +177,7 @@ public class CategoryService {
         log.info("Fetching select category list for account {}", accountId);
         return repository.findAllByAccountId(accountId).stream()
                 .map(category -> new CategorySelectDTO(category.getId(), category.getName()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private Category validateAndResolveParentCategory(Long parentId, Long accountId) {

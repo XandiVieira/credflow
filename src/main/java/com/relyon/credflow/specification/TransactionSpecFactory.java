@@ -5,11 +5,10 @@ import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.model.transaction.TransactionSource;
 import com.relyon.credflow.model.transaction.TransactionType;
 import jakarta.persistence.criteria.JoinType;
-import org.springframework.data.jpa.domain.Specification;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.jpa.domain.Specification;
 
 public class TransactionSpecFactory {
 

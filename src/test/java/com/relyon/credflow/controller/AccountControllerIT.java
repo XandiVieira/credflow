@@ -1,5 +1,17 @@
 package com.relyon.credflow.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.relyon.credflow.configuration.TestMailConfig;
@@ -10,6 +22,9 @@ import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.model.user.UserRequestDTO;
 import com.relyon.credflow.repository.UserRepository;
 import com.relyon.credflow.service.AccountService;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,15 +35,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -90,51 +96,42 @@ class AccountControllerIT {
 
     @Test
     void findById_existing_returns200_withDto() throws Exception {
-        var acc = new Account();
-        acc.setName("Main");
-        acc.setDescription("Primary");
-        acc.setInviteCode(UUID.randomUUID().toString().substring(0, 6));
-        acc = accountService.create(acc);
+        var userAccount = authenticatedUser.getAccount();
 
-        mvc.perform(get("/v1/accounts/{id}", acc.getId()).header("Authorization", bearer))
+        mvc.perform(get("/v1/accounts/{id}", userAccount.getId()).header("Authorization", bearer))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(acc.getId().intValue()))
-                .andExpect(jsonPath("$.name").value("Main"))
-                .andExpect(jsonPath("$.description").value("Primary"))
+                .andExpect(jsonPath("$.id").value(userAccount.getId().intValue()))
+                .andExpect(jsonPath("$.name").value(userAccount.getName()))
                 .andExpect(jsonPath("$.inviteCode", not(emptyOrNullString())));
     }
 
     @Test
-    void findById_missing_returns404() throws Exception {
+    void findById_missingAccount_returns403_whenNotAuthorized() throws Exception {
         mvc.perform(get("/v1/accounts/{id}", Long.MAX_VALUE).header("Authorization", bearer))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void update_existing_returns200_withUpdatedFields() throws Exception {
-        var original = new Account();
-        original.setName("Before");
-        original.setDescription("Old");
-        original.setInviteCode(UUID.randomUUID().toString().substring(0, 6));
-        original = accountService.create(original);
+        var userAccount = authenticatedUser.getAccount();
 
         var patch = new AccountRequestDTO();
         patch.setName("After");
         patch.setDescription("New");
 
-        mvc.perform(put("/v1/accounts/{id}", original.getId())
+        mvc.perform(put("/v1/accounts/{id}", userAccount.getId())
                         .header("Authorization", bearer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(om.writeValueAsString(patch)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(original.getId().intValue()))
+                .andExpect(jsonPath("$.id").value(userAccount.getId().intValue()))
                 .andExpect(jsonPath("$.name").value("After"))
                 .andExpect(jsonPath("$.description").value("New"));
     }
 
     @Test
-    void update_missing_returns404() throws Exception {
+    void update_missingAccount_returns403_whenNotAuthorized() throws Exception {
         var patch = new AccountRequestDTO();
         patch.setName("DoesNotMatter");
         patch.setDescription("Nope");
@@ -143,34 +140,22 @@ class AccountControllerIT {
                         .header("Authorization", bearer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(om.writeValueAsString(patch)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    void delete_existing_returns204_andRemovesAccount() throws Exception {
-        var acc = new Account();
-        acc.setName("ToDelete");
-        acc.setDescription("Remove me");
-        acc.setInviteCode(UUID.randomUUID().toString().substring(0, 6));
-        acc = accountService.create(acc);
-        var id = acc.getId();
+    void delete_otherUserAccount_returns403_whenNotAuthorized() throws Exception {
+        var ctx = registerAndLogin("owner_del");
 
-        mvc.perform(delete("/v1/accounts/{id}", id).header("Authorization", bearer))
-                .andExpect(status().isNoContent());
-
-        var thrown = false;
-        try {
-            accountService.findById(id);
-        } catch (Exception e) {
-            thrown = true;
-        }
-        assertThat(thrown).isTrue();
+        mvc.perform(delete("/v1/accounts/{id}", ctx.accountId())
+                        .header("Authorization", bearer))
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    void delete_missing_returns404() throws Exception {
+    void delete_missingAccount_returns403_whenNotAuthorized() throws Exception {
         mvc.perform(delete("/v1/accounts/{id}", Long.MAX_VALUE).header("Authorization", bearer))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     @Test

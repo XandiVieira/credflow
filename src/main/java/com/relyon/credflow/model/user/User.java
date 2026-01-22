@@ -3,10 +3,9 @@ package com.relyon.credflow.model.user;
 import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.time.LocalDateTime;
 
 @Entity
 @EqualsAndHashCode(callSuper = true)

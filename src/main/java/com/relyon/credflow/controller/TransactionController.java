@@ -1,11 +1,9 @@
 package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.mapper.TransactionMapper;
-import com.relyon.credflow.model.transaction.Transaction;
-import com.relyon.credflow.model.transaction.TransactionFilter;
-import com.relyon.credflow.model.transaction.TransactionRequestDTO;
-import com.relyon.credflow.model.transaction.TransactionResponseDTO;
+import com.relyon.credflow.model.transaction.*;
 import com.relyon.credflow.model.user.AuthenticatedUser;
+import com.relyon.credflow.service.DuplicateDetectionService;
 import com.relyon.credflow.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -22,8 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,6 +31,7 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final TransactionMapper transactionMapper;
+    private final DuplicateDetectionService duplicateDetectionService;
 
     @Operation(
             summary = "Importar fatura do Banrisul",
@@ -63,15 +61,16 @@ public class TransactionController {
             description = "Cria uma nova transação financeira manualmente. O sistema automaticamente: " +
                     "1) Define a origem como MANUAL, " +
                     "2) Executa detecção de estornos/reembolsos (busca ±90 dias por valores opostos), " +
-                    "3) Cria mapeamento de descrição para futuras categorizações automáticas."
+                    "3) Cria mapeamento de descrição para futuras categorizações automáticas, " +
+                    "4) Verifica potenciais duplicatas com transações importadas (±3 dias, mesmo valor)."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Transação criada com sucesso"),
+            @ApiResponse(responseCode = "200", description = "Transação criada com sucesso. Se houver potenciais duplicatas, elas são retornadas no campo 'potentialDuplicates'"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
             @ApiResponse(responseCode = "401", description = "Não autenticado", content = @Content)
     })
     @PostMapping
-    public ResponseEntity<TransactionResponseDTO> create(
+    public ResponseEntity<TransactionCreateResponseDTO> create(
             @Parameter(description = "Dados da transação a ser criada", required = true)
             @Valid @RequestBody TransactionRequestDTO dto,
             @AuthenticationPrincipal AuthenticatedUser user
@@ -79,7 +78,23 @@ public class TransactionController {
         log.info("POST /v1/transactions to create transaction for account {}", user.getAccountId());
         var transaction = transactionMapper.toEntity(dto);
         var created = transactionService.create(transaction, user.getAccountId());
-        return ResponseEntity.ok(transactionMapper.toDto(created));
+
+        var potentialDuplicates = duplicateDetectionService.findPotentialDuplicatesForManualEntry(
+                user.getAccountId(),
+                created.getDate(),
+                created.getValue()
+        );
+
+        if (!potentialDuplicates.isEmpty()) {
+            log.info("Found {} potential duplicates for transaction {}", potentialDuplicates.size(), created.getId());
+        }
+
+        var response = TransactionCreateResponseDTO.builder()
+                .transaction(transactionMapper.toDto(created))
+                .potentialDuplicates(potentialDuplicates)
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     @Operation(
@@ -242,5 +257,26 @@ public class TransactionController {
         var updated = transactionService.bulkUpdateResponsibleUsers(ids, responsibleUserIds, user.getAccountId());
         var response = updated.stream().map(transactionMapper::toDto).toList();
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Listar potenciais duplicatas",
+            description = "Retorna grupos de transações que podem ser duplicatas. " +
+                    "Uma duplicata potencial é identificada quando existem transações com o mesmo valor " +
+                    "dentro de uma janela de ±3 dias, sendo uma de origem CSV_IMPORT e outra MANUAL. " +
+                    "Duplicatas entre transações do mesmo tipo (CSV-CSV ou MANUAL-MANUAL) não são reportadas."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista de grupos de potenciais duplicatas"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado", content = @Content)
+    })
+    @GetMapping("/duplicates")
+    public ResponseEntity<List<DuplicateGroupDTO>> findPotentialDuplicates(
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        log.info("GET /v1/transactions/duplicates for account {}", user.getAccountId());
+        var duplicates = duplicateDetectionService.findAllPotentialDuplicates(user.getAccountId());
+        log.info("Found {} potential duplicate groups for account {}", duplicates.size(), user.getAccountId());
+        return ResponseEntity.ok(duplicates);
     }
 }

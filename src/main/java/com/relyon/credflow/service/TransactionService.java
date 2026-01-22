@@ -17,14 +17,6 @@ import com.relyon.credflow.specification.Sorts;
 import com.relyon.credflow.specification.TransactionFilterNormalizer;
 import com.relyon.credflow.specification.TransactionSpecFactory;
 import com.relyon.credflow.utils.NormalizationUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -34,6 +26,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -85,9 +84,15 @@ public class TransactionService {
     }
 
     private boolean isNotDuplicateByChecksum(Transaction t) {
-        var exists = repository.existsByChecksum(t.getChecksum());
-        if (exists) log.info("Duplicate transaction skipped (checksum={}): {}", t.getChecksum(), t);
-        return !exists;
+        if (repository.existsByChecksum(t.getChecksum())) {
+            log.info("Duplicate transaction skipped (raw checksum): {}", t.getDescription());
+            return false;
+        }
+        if (t.getNormalizedChecksum() != null && repository.existsByNormalizedChecksum(t.getNormalizedChecksum())) {
+            log.info("Duplicate transaction skipped (normalized checksum): {}", t.getDescription());
+            return false;
+        }
+        return true;
     }
 
     private Optional<Transaction> parseLine(
@@ -114,23 +119,26 @@ public class TransactionService {
                 pending.put(normalized, mapping);
             }
 
-            var tx = new Transaction(
+            var transaction = new Transaction(
                     date,
                     description,
                     mapping.getSimplifiedDescription(),
-                    mapping.getCategory() != null ? mapping.getCategory() : new Category("Não Identificado", account),
+                    mapping.getCategory(),
                     value,
                     null
             );
             var checksum = DigestUtils.sha256Hex(line.trim());
-            tx.setChecksum(checksum);
-            tx.setAccount(account);
-            tx.setTransactionType(TransactionType.ONE_TIME);
+            var normalizedChecksum = NormalizationUtils.generateNormalizedChecksum(date, description, value, account.getId());
 
-            initializeSourceTrackingFields(tx, TransactionSource.CSV_IMPORT, null);
-            tx.setOriginalChecksum(checksum);
+            transaction.setChecksum(checksum);
+            transaction.setNormalizedChecksum(normalizedChecksum);
+            transaction.setAccount(account);
+            transaction.setTransactionType(TransactionType.ONE_TIME);
 
-            return Optional.of(tx);
+            initializeSourceTrackingFields(transaction, TransactionSource.CSV_IMPORT, null);
+            transaction.setOriginalChecksum(checksum);
+
+            return Optional.of(transaction);
 
         } catch (Exception ex) {
             log.warn("Line ignored due to parsing error: [{}] - {}", line, ex.getMessage());
@@ -142,7 +150,6 @@ public class TransactionService {
         return mappingRepository.findAllByAccountId(accountId).stream()
                 .collect(Collectors.toMap(DescriptionMapping::getNormalizedDescription, Function.identity()));
     }
-
 
     @Transactional
     public Transaction create(Transaction tx, Long accountId) {
@@ -182,9 +189,9 @@ public class TransactionService {
             throw new IllegalArgumentException(translationService.translateMessage("users.notFound", ids));
         }
 
-        for (var u : found) {
-            if (u.getAccount() == null || !u.getAccount().getId().equals(accountId)) {
-                throw new IllegalArgumentException(translationService.translateMessage("user.accountMismatch", u.getId()));
+        for (var user : found) {
+            if (user.getAccount() == null || !user.getAccount().getId().equals(accountId)) {
+                throw new IllegalArgumentException(translationService.translateMessage("user.accountMismatch", user.getId()));
             }
         }
         return new LinkedHashSet<>(found);
@@ -281,9 +288,9 @@ public class TransactionService {
         var transactions = transactionIds.stream()
                 .map(id -> repository.findByIdAndAccountId(id, accountId)
                         .orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id)))
-                .peek(tx -> {
-                    markAsEditedIfImported(tx);
-                    tx.setCategory(category);
+                .peek(transaction -> {
+                    markAsEditedIfImported(transaction);
+                    transaction.setCategory(category);
                 })
                 .toList();
 
@@ -308,9 +315,9 @@ public class TransactionService {
         var transactions = transactionIds.stream()
                 .map(id -> repository.findByIdAndAccountId(id, accountId)
                         .orElseThrow(() -> new ResourceNotFoundException("resource.transaction.notFound", id)))
-                .peek(tx -> {
-                    markAsEditedIfImported(tx);
-                    tx.setResponsibleUsers(responsibleUsers);
+                .peek(transaction -> {
+                    markAsEditedIfImported(transaction);
+                    transaction.setResponsibleUsers(responsibleUsers);
                 })
                 .toList();
 
@@ -338,66 +345,61 @@ public class TransactionService {
 
     public void applyMappingToExistingTransactions(Long accountId, String originalDescription, String simplified, Category category) {
         var affected = repository.findByAccountIdAndDescriptionIgnoreCase(accountId, originalDescription);
-        affected.forEach(t -> {
-            t.setSimplifiedDescription(simplified);
-            t.setCategory(category);
+        affected.forEach(transaction -> {
+            transaction.setSimplifiedDescription(simplified);
+            transaction.setCategory(category);
         });
         repository.saveAll(affected);
     }
 
-    /**
-     * Validates transaction type and installment fields consistency
-     */
-    private void validateTransactionTypeAndInstallments(Transaction tx) {
-        if (tx.getTransactionType() == null) {
+    private void validateTransactionTypeAndInstallments(Transaction transaction) {
+        if (transaction.getTransactionType() == null) {
             throw new IllegalArgumentException(translationService.translateMessage("transaction.type.required"));
         }
 
-        if (tx.getTransactionType() == TransactionType.INSTALLMENT) {
-            // When type is INSTALLMENT, installment fields are required
-            if (tx.getCurrentInstallment() == null) {
+        if (transaction.getTransactionType() == TransactionType.INSTALLMENT) {
+            if (transaction.getCurrentInstallment() == null) {
                 throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.current.required"));
             }
-            if (tx.getTotalInstallments() == null) {
+            if (transaction.getTotalInstallments() == null) {
                 throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.total.required"));
             }
-            if (tx.getCurrentInstallment() <= 0) {
+            if (transaction.getCurrentInstallment() <= 0) {
                 throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.current.invalid"));
             }
-            if (tx.getTotalInstallments() <= 0) {
+            if (transaction.getTotalInstallments() <= 0) {
                 throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.total.invalid"));
             }
-            if (tx.getCurrentInstallment() > tx.getTotalInstallments()) {
+            if (transaction.getCurrentInstallment() > transaction.getTotalInstallments()) {
                 throw new IllegalArgumentException(translationService.translateMessage("transaction.installment.current.exceeds"));
             }
         } else {
-            // For EVENTUAL and RECORRENTE, installment fields should be null
-            if (tx.getCurrentInstallment() != null || tx.getTotalInstallments() != null) {
-                log.warn("Clearing installment fields for non-installment transaction type: {}", tx.getTransactionType());
-                tx.setCurrentInstallment(null);
-                tx.setTotalInstallments(null);
-                tx.setInstallmentGroupId(null);
+            if (transaction.getCurrentInstallment() != null || transaction.getTotalInstallments() != null) {
+                log.warn("Clearing installment fields for non-installment transaction type: {}", transaction.getTransactionType());
+                transaction.setCurrentInstallment(null);
+                transaction.setTotalInstallments(null);
+                transaction.setInstallmentGroupId(null);
             }
         }
     }
 
-    private void initializeSourceTrackingFields(Transaction tx, TransactionSource source, String importBatchId) {
-        tx.setSource(source);
-        tx.setImportBatchId(importBatchId);
-        tx.setWasEditedAfterImport(false);
-        tx.setIsReversal(false);
+    private void initializeSourceTrackingFields(Transaction transaction, TransactionSource source, String importBatchId) {
+        transaction.setSource(source);
+        transaction.setImportBatchId(importBatchId);
+        transaction.setWasEditedAfterImport(false);
+        transaction.setIsReversal(false);
 
-        if (tx.getChecksum() != null && tx.getOriginalChecksum() == null) {
-            tx.setOriginalChecksum(tx.getChecksum());
+        if (transaction.getChecksum() != null && transaction.getOriginalChecksum() == null) {
+            transaction.setOriginalChecksum(transaction.getChecksum());
         }
 
         log.debug("Initialized source tracking: source={}, batchId={}", source, importBatchId);
     }
 
-    private void markAsEditedIfImported(Transaction tx) {
-        if (tx.getSource() != TransactionSource.MANUAL && !Boolean.TRUE.equals(tx.getWasEditedAfterImport())) {
-            log.info("Marking transaction {} as edited after import", tx.getId());
-            tx.setWasEditedAfterImport(true);
+    private void markAsEditedIfImported(Transaction transaction) {
+        if (transaction.getSource() != TransactionSource.MANUAL && !Boolean.TRUE.equals(transaction.getWasEditedAfterImport())) {
+            log.info("Marking transaction {} as edited after import", transaction.getId());
+            transaction.setWasEditedAfterImport(true);
         }
     }
 }

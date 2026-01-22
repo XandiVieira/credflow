@@ -1,8 +1,7 @@
 package com.relyon.credflow.model.category;
 
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 @Data
 public class CategoryResponseDTO {

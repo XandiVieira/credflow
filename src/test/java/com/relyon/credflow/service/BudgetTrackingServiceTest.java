@@ -1,5 +1,9 @@
 package com.relyon.credflow.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
 import com.relyon.credflow.model.budget.Budget;
 import com.relyon.credflow.model.budget.BudgetPreferencesResponseDTO;
 import com.relyon.credflow.model.budget.BudgetType;
@@ -9,6 +13,12 @@ import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.BudgetRepository;
 import com.relyon.credflow.repository.TransactionRepository;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,17 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BudgetTrackingServiceTest {

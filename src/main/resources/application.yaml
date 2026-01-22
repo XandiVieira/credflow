@@ -31,7 +31,7 @@ management:
   endpoint.health.probes.enabled: true
 
 jwt:
-  secret: ${JWT_SECRET:local-test-secret}
+  secret: ${JWT_SECRET:local-test-secret-key-32-chars!!}
   expiration: ${JWT_EXPIRATION_MS:3600000}
 
 app:

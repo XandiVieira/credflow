@@ -5,14 +5,13 @@ import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.account.AccountRequestDTO;
 import com.relyon.credflow.model.account.AccountResponseDTO;
 import com.relyon.credflow.model.user.User;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import org.hibernate.Hibernate;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
 
 @Mapper(config = MapStructCentralConfig.class)
 public interface AccountMapper {

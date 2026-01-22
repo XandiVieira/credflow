@@ -1,5 +1,6 @@
 package com.relyon.credflow.service;
 
+import com.relyon.credflow.constant.BusinessConstants;
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.budget.BudgetPreferences;
 import com.relyon.credflow.model.budget.BudgetPreferencesResponseDTO;
@@ -90,13 +91,13 @@ public class BudgetPreferencesService {
         return BudgetPreferencesResponseDTO.builder()
                 .enableAlerts(true)
                 .enableRollover(false)
-                .rolloverMaxMonths(2)
-                .rolloverMaxPercentage(50)
-                .yellowWarningThreshold(80)
-                .orangeWarningThreshold(100)
-                .redWarningThreshold(120)
+                .rolloverMaxMonths(BusinessConstants.Budget.ROLLOVER_MAX_MONTHS_DEFAULT)
+                .rolloverMaxPercentage(BusinessConstants.Budget.ROLLOVER_MAX_PERCENTAGE_DEFAULT)
+                .yellowWarningThreshold(BusinessConstants.Budget.YELLOW_WARNING_THRESHOLD_DEFAULT)
+                .orangeWarningThreshold(BusinessConstants.Budget.ORANGE_WARNING_THRESHOLD_DEFAULT)
+                .redWarningThreshold(BusinessConstants.Budget.RED_WARNING_THRESHOLD_DEFAULT)
                 .enableProjectedWarnings(true)
-                .projectedWarningMinDays(5)
+                .projectedWarningMinDays(BusinessConstants.Budget.PROJECTED_WARNING_MIN_DAYS_DEFAULT)
                 .build();
     }
 }

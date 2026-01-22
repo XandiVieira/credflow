@@ -1,9 +1,19 @@
 package com.relyon.credflow.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.relyon.credflow.model.user.AuthRequest;
 import com.relyon.credflow.model.user.UserRequestDTO;
+import java.nio.charset.StandardCharsets;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,12 +24,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-
-import java.nio.charset.StandardCharsets;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -136,7 +140,7 @@ class UserControllerIT {
     }
 
     @Test
-    void delete_existing_returns204_then404_onFetch() throws Exception {
+    void delete_existing_returns204_andCrossAccountAccess_returns403() throws Exception {
         var ctx = registerAndLogin("user_it");
 
         mvc.perform(delete("/v1/users/{id}", ctx.userId())
@@ -147,7 +151,7 @@ class UserControllerIT {
 
         mvc.perform(get("/v1/users/{id}", ctx.userId())
                         .header("Authorization", inspector.bearer()))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     private JsonNode read(MvcResult mvcResult) throws Exception {

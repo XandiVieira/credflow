@@ -1,10 +1,9 @@
 package com.relyon.credflow.repository;
 
 import com.relyon.credflow.model.budget.BudgetPreferences;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-
-import java.util.Optional;
 
 public interface BudgetPreferencesRepository extends JpaRepository<BudgetPreferences, Long> {
 

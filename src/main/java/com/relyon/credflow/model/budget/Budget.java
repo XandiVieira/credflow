@@ -5,11 +5,10 @@ import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
-
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "budget", uniqueConstraints = {

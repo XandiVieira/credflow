@@ -1,5 +1,11 @@
 package com.relyon.credflow.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.budget.Budget;
 import com.relyon.credflow.model.budget.BudgetType;
@@ -8,22 +14,15 @@ import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.BudgetRepository;
 import com.relyon.credflow.repository.CategoryRepository;
 import com.relyon.credflow.repository.UserRepository;
+import java.math.BigDecimal;
+import java.time.YearMonth;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.YearMonth;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BudgetServiceTest {

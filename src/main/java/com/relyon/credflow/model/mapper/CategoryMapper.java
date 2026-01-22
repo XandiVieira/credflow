@@ -5,14 +5,13 @@ import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.category.CategoryRequestDTO;
 import com.relyon.credflow.model.category.CategoryResponseDTO;
 import com.relyon.credflow.model.user.User;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 @Mapper(config = MapStructCentralConfig.class)
 public interface CategoryMapper {
@@ -37,7 +36,7 @@ public interface CategoryMapper {
 
     @Named("idsToUsers")
     default Set<User> idsToUsers(List<Long> ids) {
-        if (ids == null) return null;
+        if (ids == null || ids.isEmpty()) return Set.of();
         Set<User> out = new LinkedHashSet<>();
         for (Long id : ids) {
             if (id == null) continue;

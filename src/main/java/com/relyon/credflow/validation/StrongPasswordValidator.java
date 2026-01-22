@@ -27,7 +27,7 @@ public class StrongPasswordValidator implements ConstraintValidator<StrongPasswo
         if (requireUppercase && !value.chars().anyMatch(Character::isUpperCase)) return false;
         if (requireLowercase && !value.chars().anyMatch(Character::isLowerCase)) return false;
         if (requireDigit && !value.chars().anyMatch(Character::isDigit)) return false;
-        if (requireSpecial && value.chars().noneMatch(c -> "!@#$%^&*()[]{}-_+=|\\:;\"'<>,.?/`~".indexOf(c) >= 0))
+        if (requireSpecial && value.chars().noneMatch(character -> "!@#$%^&*()[]{}-_+=|\\:;\"'<>,.?/`~".indexOf(character) >= 0))
             return false;
         return true;
     }

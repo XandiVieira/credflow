@@ -1,5 +1,12 @@
 package com.relyon.credflow.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.csv.CsvImportHistory;
@@ -8,18 +15,13 @@ import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.repository.AccountRepository;
 import com.relyon.credflow.repository.CsvImportHistoryRepository;
 import com.relyon.credflow.repository.TransactionRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CsvImportServiceTest {
@@ -97,7 +99,7 @@ class CsvImportServiceTest {
                 .build();
 
         when(csvImportHistoryRepository.findById(importHistoryId)).thenReturn(Optional.of(history));
-        when(translationService.translateMessage("csv.import.accountMismatch"))
+        when(translationService.translateMessage("file.import.accountMismatch"))
                 .thenReturn("CSV import does not belong to this account");
 
         assertThatThrownBy(() -> csvImportService.rollbackImport(importHistoryId, accountId))
@@ -190,7 +192,7 @@ class CsvImportServiceTest {
                 .build();
 
         when(csvImportHistoryRepository.findById(importHistoryId)).thenReturn(Optional.of(history));
-        when(translationService.translateMessage("csv.import.accountMismatch"))
+        when(translationService.translateMessage("file.import.accountMismatch"))
                 .thenReturn("CSV import does not belong to this account");
 
         assertThatThrownBy(() -> csvImportService.getImportById(importHistoryId, accountId))

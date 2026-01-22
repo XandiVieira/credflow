@@ -1,5 +1,7 @@
 package com.relyon.credflow.controller;
 
+import static com.relyon.credflow.constant.BusinessConstants.Pagination.DEFAULT_PAGE_SIZE;
+
 import com.relyon.credflow.model.category.Category;
 import com.relyon.credflow.model.category.CategoryRequestDTO;
 import com.relyon.credflow.model.category.CategoryResponseDTO;
@@ -8,13 +10,12 @@ import com.relyon.credflow.model.mapper.CategoryMapper;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.service.CategoryService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/v1/categories")
@@ -50,7 +51,7 @@ public class CategoryController {
     public ResponseEntity<org.springframework.data.domain.Page<CategoryResponseDTO>> getAllByAccount(
             @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size) {
 
         log.info("GET all categories for account {} (page={}, size={})", user.getAccountId(), page, size);
         var response = service.findAllByAccountHierarchical(user.getAccountId(), page, size);

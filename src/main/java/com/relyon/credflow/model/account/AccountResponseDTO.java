@@ -1,8 +1,7 @@
 package com.relyon.credflow.model.account;
 
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 @Data
 public class AccountResponseDTO {

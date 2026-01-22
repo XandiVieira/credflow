@@ -1,9 +1,8 @@
 package com.relyon.credflow.model.credit_card;
 
 import jakarta.validation.constraints.*;
-import lombok.Data;
-
 import java.math.BigDecimal;
+import lombok.Data;
 
 @Data
 public class CreditCardRequestDTO {

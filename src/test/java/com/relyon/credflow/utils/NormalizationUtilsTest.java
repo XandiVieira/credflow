@@ -1,8 +1,11 @@
 package com.relyon.credflow.utils;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 class NormalizationUtilsTest {
 
@@ -104,5 +107,114 @@ class NormalizationUtilsTest {
     void normalizeDescription_shouldKeepAlphanumericWithSpaces() {
         var result = NormalizationUtils.normalizeDescription("Amazon Prime 2024");
         assertThat(result).isEqualTo("amazon prime 2024");
+    }
+
+    @Nested
+    class GenerateNormalizedChecksum {
+
+        @Test
+        void shouldGenerateSameChecksumForPdfAndCsvFormats() {
+            var date = LocalDate.of(2025, 7, 31);
+            var value = new BigDecimal("196.50");
+            var accountId = 1L;
+
+            var pdfDescription = "FeFloresCostura 02/02";
+            var csvDescription = "FeFloresCostura     02/02";
+
+            var pdfChecksum = NormalizationUtils.generateNormalizedChecksum(date, pdfDescription, value, accountId);
+            var csvChecksum = NormalizationUtils.generateNormalizedChecksum(date, csvDescription, value, accountId);
+
+            assertThat(pdfChecksum).isEqualTo(csvChecksum);
+        }
+
+        @Test
+        void shouldGenerateSameChecksumRegardlessOfWhitespace() {
+            var date = LocalDate.of(2025, 8, 26);
+            var value = new BigDecimal("25.97");
+            var accountId = 1L;
+
+            var desc1 = "ADHomeMarketLtda PORTO ALEGRE BRA";
+            var desc2 = "ADHomeMarketLtda   PORTO ALEGRE   BRA  ";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(date, desc1, value, accountId);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(date, desc2, value, accountId);
+
+            assertThat(checksum1).isEqualTo(checksum2);
+        }
+
+        @Test
+        void shouldGenerateSameChecksumRegardlessOfCase() {
+            var date = LocalDate.of(2025, 9, 1);
+            var value = new BigDecimal("12855.13");
+            var accountId = 1L;
+
+            var desc1 = "PGTO HOME/OFFICE BANKING";
+            var desc2 = "pgto home/office banking";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(date, desc1, value, accountId);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(date, desc2, value, accountId);
+
+            assertThat(checksum1).isEqualTo(checksum2);
+        }
+
+        @Test
+        void shouldGenerateDifferentChecksumForDifferentDates() {
+            var value = new BigDecimal("100.00");
+            var accountId = 1L;
+            var description = "Same description";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(LocalDate.of(2025, 1, 1), description, value, accountId);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(LocalDate.of(2025, 1, 2), description, value, accountId);
+
+            assertThat(checksum1).isNotEqualTo(checksum2);
+        }
+
+        @Test
+        void shouldGenerateDifferentChecksumForDifferentValues() {
+            var date = LocalDate.of(2025, 1, 1);
+            var accountId = 1L;
+            var description = "Same description";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(date, description, new BigDecimal("100.00"), accountId);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(date, description, new BigDecimal("100.01"), accountId);
+
+            assertThat(checksum1).isNotEqualTo(checksum2);
+        }
+
+        @Test
+        void shouldGenerateDifferentChecksumForDifferentAccounts() {
+            var date = LocalDate.of(2025, 1, 1);
+            var value = new BigDecimal("100.00");
+            var description = "Same description";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(date, description, value, 1L);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(date, description, value, 2L);
+
+            assertThat(checksum1).isNotEqualTo(checksum2);
+        }
+
+        @Test
+        void shouldUsAbsoluteValueForNegativeAmounts() {
+            var date = LocalDate.of(2025, 1, 1);
+            var accountId = 1L;
+            var description = "Payment";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(date, description, new BigDecimal("100.00"), accountId);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(date, description, new BigDecimal("-100.00"), accountId);
+
+            assertThat(checksum1).isEqualTo(checksum2);
+        }
+
+        @Test
+        void shouldHandleDecimalPrecisionDifferences() {
+            var date = LocalDate.of(2025, 1, 1);
+            var accountId = 1L;
+            var description = "Payment";
+
+            var checksum1 = NormalizationUtils.generateNormalizedChecksum(date, description, new BigDecimal("100"), accountId);
+            var checksum2 = NormalizationUtils.generateNormalizedChecksum(date, description, new BigDecimal("100.00"), accountId);
+
+            assertThat(checksum1).isEqualTo(checksum2);
+        }
     }
 }

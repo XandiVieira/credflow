@@ -6,13 +6,12 @@ import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionRequestDTO;
 import com.relyon.credflow.model.transaction.TransactionResponseDTO;
 import com.relyon.credflow.model.user.User;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 @Mapper(config = MapStructCentralConfig.class)
 public interface TransactionMapper {
@@ -33,6 +32,7 @@ public interface TransactionMapper {
     @Mapping(target = "importBatchId", ignore = true)
     @Mapping(target = "wasEditedAfterImport", ignore = true)
     @Mapping(target = "originalChecksum", ignore = true)
+    @Mapping(target = "normalizedChecksum", ignore = true)
     @Mapping(target = "isReversal", ignore = true)
     @Mapping(target = "relatedTransaction", ignore = true)
     @Mapping(target = "csvImportHistory", ignore = true)
@@ -81,9 +81,9 @@ public interface TransactionMapper {
         var out = new LinkedHashSet<User>(ids.size());
         for (Long id : ids) {
             if (id == null) continue;
-            var u = new User();
-            u.setId(id);
-            out.add(u);
+            var user = new User();
+            user.setId(id);
+            out.add(user);
         }
         return out;
     }

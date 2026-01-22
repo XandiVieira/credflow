@@ -1,9 +1,8 @@
 package com.relyon.credflow.model.credit_card;
 
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Data;
 
 
 @Data

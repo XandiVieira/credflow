@@ -1,22 +1,22 @@
 package com.relyon.credflow.service;
 
+import com.relyon.credflow.constant.BusinessConstants;
 import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.repository.TransactionRepository;
+import java.math.BigDecimal;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RefundDetectionService {
 
-    private static final int REVERSAL_SEARCH_WINDOW_DAYS = 90;
-    private static final double DESCRIPTION_SIMILARITY_THRESHOLD = 0.6;
+    private static final int REVERSAL_SEARCH_WINDOW_DAYS = BusinessConstants.Detection.REVERSAL_SEARCH_WINDOW_DAYS;
+    private static final double DESCRIPTION_SIMILARITY_THRESHOLD = BusinessConstants.Detection.DESCRIPTION_SIMILARITY_THRESHOLD;
     private final Object reversalDetectionLock = new Object();
 
     private final TransactionRepository transactionRepository;
@@ -68,62 +68,16 @@ public class RefundDetectionService {
         }
     }
 
-    /*
-    @Transactional
-    public Optional<Transaction> detectAndLinkReversalBidirectional(Transaction transaction) {
-        if (transaction.getIsReversal() != null && transaction.getIsReversal()) {
-            log.debug("Transaction {} is already marked as reversal, skipping detection", transaction.getId());
-            return Optional.empty();
-        }
-
-        if (transaction.getValue() == null || transaction.getValue().compareTo(BigDecimal.ZERO) == 0) {
-            log.debug("Transaction {} has zero or null value, skipping reversal detection", transaction.getId());
-            return Optional.empty();
-        }
-
-        synchronized (reversalDetectionLock) {
-            if (transaction.getIsReversal() != null && transaction.getIsReversal()) {
-                log.debug("Transaction {} was marked as reversal while waiting for lock", transaction.getId());
-                return Optional.empty();
-            }
-
-            var startDate = transaction.getDate().minusDays(REVERSAL_SEARCH_WINDOW_DAYS);
-            var endDate = transaction.getDate().plusDays(REVERSAL_SEARCH_WINDOW_DAYS);
-            var creditCardId = transaction.getCreditCard() != null ? transaction.getCreditCard().getId() : null;
-
-            log.debug("Searching for potential reversals for transaction {} within {} to {}",
-                    transaction.getId(), startDate, endDate);
-
-            var potentialReversals = transactionRepository.findPotentialReversals(
-                    transaction.getAccount().getId(),
-                    transaction.getId(),
-                    transaction.getValue(),
-                    startDate,
-                    endDate,
-                    creditCardId
-            );
-
-            return potentialReversals.stream()
-                    .filter(candidate -> isLikelyReversal(transaction, candidate))
-                    .filter(candidate -> !candidate.getIsReversal())
-                    .findFirst()
-                    .map(reversal -> linkTransactionsAsReversals(transaction, reversal));
-        }
-    }
-    */
-
     private boolean isLikelyReversal(Transaction transaction, Transaction candidate) {
         var descriptionSimilarity = calculateDescriptionSimilarity(
                 transaction.getDescription(),
                 candidate.getDescription()
         );
 
-        var isSimilarEnough = descriptionSimilarity >= DESCRIPTION_SIMILARITY_THRESHOLD;
-
         log.debug("Comparing transaction {} with candidate {}: similarity = {}, threshold = {}",
                 transaction.getId(), candidate.getId(), descriptionSimilarity, DESCRIPTION_SIMILARITY_THRESHOLD);
 
-        return isSimilarEnough;
+        return descriptionSimilarity >= DESCRIPTION_SIMILARITY_THRESHOLD;
     }
 
     private Transaction linkTransactionsAsReversals(Transaction transaction, Transaction reversal) {

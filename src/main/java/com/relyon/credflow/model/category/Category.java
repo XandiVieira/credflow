@@ -4,11 +4,10 @@ import com.relyon.credflow.model.BaseEntity;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.user.User;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
-
 import java.util.HashSet;
 import java.util.Set;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "category",

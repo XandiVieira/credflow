@@ -11,19 +11,18 @@ import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.model.user.User;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.specification.TransactionSpecFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -202,12 +201,12 @@ public class ExportService {
     private BigDecimal[] calculateSummary(List<Transaction> transactions) {
         var income = transactions.stream()
                 .map(Transaction::getValue)
-                .filter(value -> value.compareTo(BigDecimal.ZERO) > 0)
+                .filter(transactionValue -> transactionValue.compareTo(BigDecimal.ZERO) > 0)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var expense = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .map(t -> t.getValue().abs())
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .map(transaction -> transaction.getValue().abs())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var balance = income.subtract(expense);

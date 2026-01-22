@@ -1,6 +1,10 @@
 package com.relyon.credflow.repository;
 
 import com.relyon.credflow.model.transaction.Transaction;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -8,15 +12,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
 public interface TransactionRepository extends JpaRepository<Transaction, Long>,
         JpaSpecificationExecutor<Transaction> {
 
     boolean existsByChecksum(String checksum);
+
+    boolean existsByNormalizedChecksum(String normalizedChecksum);
 
     List<Transaction> findByAccountIdAndDescriptionIgnoreCase(Long accountId, String originalDescription);
 
@@ -73,4 +74,28 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
 
     @EntityGraph(attributePaths = {"responsibleUsers", "category", "creditCard"})
     List<Transaction> findByInstallmentGroupIdAndAccountId(String installmentGroupId, Long accountId);
+
+    @EntityGraph(attributePaths = {"category", "creditCard"})
+    @Query("""
+            select t from Transaction t
+             where t.account.id = :accountId
+               and t.date between :startDate and :endDate
+               and t.value = :value
+            """)
+    List<Transaction> findPotentialDuplicates(Long accountId,
+                                              LocalDate startDate,
+                                              LocalDate endDate,
+                                              BigDecimal value);
+
+    @EntityGraph(attributePaths = {"category", "creditCard"})
+    List<Transaction> findAllByAccountId(Long accountId);
+
+    @EntityGraph(attributePaths = {"category", "creditCard"})
+    @Query("""
+            select t from Transaction t
+             where t.account.id = :accountId
+               and t.installmentGroupId is not null
+             order by t.installmentGroupId, t.currentInstallment
+            """)
+    List<Transaction> findAllInstallmentsByAccountId(Long accountId);
 }

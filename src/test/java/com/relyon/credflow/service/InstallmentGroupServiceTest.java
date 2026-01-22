@@ -1,5 +1,10 @@
 package com.relyon.credflow.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
 import com.relyon.credflow.model.category.Category;
@@ -11,22 +16,16 @@ import com.relyon.credflow.repository.CategoryRepository;
 import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.repository.UserRepository;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class InstallmentGroupServiceTest {
@@ -400,5 +399,116 @@ class InstallmentGroupServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(categoryRepository).findByIdAndAccountId(categoryId, accountId);
+    }
+
+    @Test
+    void getAllInstallmentGroups_whenGroupsExist_shouldReturnSummaries() {
+        var accountId = 1L;
+        var groupId1 = "group-1";
+        var groupId2 = "group-2";
+
+        var category = Category.builder().id(1L).name("Electronics").build();
+        var creditCard = CreditCard.builder().id(1L).nickname("Visa").build();
+
+        var transactions = List.of(
+                Transaction.builder()
+                        .id(1L)
+                        .description("Laptop")
+                        .value(new BigDecimal("100.00"))
+                        .date(LocalDate.of(2025, 1, 15))
+                        .currentInstallment(1)
+                        .totalInstallments(3)
+                        .installmentGroupId(groupId1)
+                        .wasEditedAfterImport(true)
+                        .category(category)
+                        .creditCard(creditCard)
+                        .build(),
+                Transaction.builder()
+                        .id(2L)
+                        .description("Laptop")
+                        .value(new BigDecimal("100.00"))
+                        .date(LocalDate.of(2025, 2, 15))
+                        .currentInstallment(2)
+                        .totalInstallments(3)
+                        .installmentGroupId(groupId1)
+                        .wasEditedAfterImport(false)
+                        .category(category)
+                        .creditCard(creditCard)
+                        .build(),
+                Transaction.builder()
+                        .id(3L)
+                        .description("Laptop")
+                        .value(new BigDecimal("100.00"))
+                        .date(LocalDate.of(2025, 3, 15))
+                        .currentInstallment(3)
+                        .totalInstallments(3)
+                        .installmentGroupId(groupId1)
+                        .wasEditedAfterImport(false)
+                        .category(category)
+                        .creditCard(creditCard)
+                        .build(),
+                Transaction.builder()
+                        .id(4L)
+                        .description("Phone")
+                        .value(new BigDecimal("50.00"))
+                        .date(LocalDate.of(2025, 2, 1))
+                        .currentInstallment(1)
+                        .totalInstallments(2)
+                        .installmentGroupId(groupId2)
+                        .wasEditedAfterImport(false)
+                        .category(category)
+                        .build(),
+                Transaction.builder()
+                        .id(5L)
+                        .description("Phone")
+                        .value(new BigDecimal("50.00"))
+                        .date(LocalDate.of(2025, 3, 1))
+                        .currentInstallment(2)
+                        .totalInstallments(2)
+                        .installmentGroupId(groupId2)
+                        .wasEditedAfterImport(false)
+                        .category(category)
+                        .build()
+        );
+
+        when(transactionRepository.findAllInstallmentsByAccountId(accountId))
+                .thenReturn(transactions);
+
+        var result = installmentGroupService.getAllInstallmentGroups(accountId);
+
+        assertThat(result).hasSize(2);
+
+        var group1 = result.stream().filter(g -> g.getInstallmentGroupId().equals(groupId1)).findFirst().orElseThrow();
+        assertThat(group1.getDescription()).isEqualTo("Laptop");
+        assertThat(group1.getTotalAmount()).isEqualByComparingTo("300.00");
+        assertThat(group1.getTotalInstallments()).isEqualTo(3);
+        assertThat(group1.getPaidInstallments()).isEqualTo(1);
+        assertThat(group1.getPendingInstallments()).isEqualTo(2);
+        assertThat(group1.getTotalPaid()).isEqualByComparingTo("100.00");
+        assertThat(group1.getTotalPending()).isEqualByComparingTo("200.00");
+        assertThat(group1.getFirstInstallmentDate()).isEqualTo(LocalDate.of(2025, 1, 15));
+        assertThat(group1.getLastInstallmentDate()).isEqualTo(LocalDate.of(2025, 3, 15));
+        assertThat(group1.getCategoryName()).isEqualTo("Electronics");
+        assertThat(group1.getCreditCardNickname()).isEqualTo("Visa");
+
+        var group2 = result.stream().filter(g -> g.getInstallmentGroupId().equals(groupId2)).findFirst().orElseThrow();
+        assertThat(group2.getDescription()).isEqualTo("Phone");
+        assertThat(group2.getTotalAmount()).isEqualByComparingTo("100.00");
+        assertThat(group2.getTotalInstallments()).isEqualTo(2);
+        assertThat(group2.getPaidInstallments()).isEqualTo(0);
+        assertThat(group2.getPendingInstallments()).isEqualTo(2);
+        assertThat(group2.getCreditCardNickname()).isNull();
+    }
+
+    @Test
+    void getAllInstallmentGroups_whenNoGroups_shouldReturnEmptyList() {
+        var accountId = 1L;
+
+        when(transactionRepository.findAllInstallmentsByAccountId(accountId))
+                .thenReturn(List.of());
+
+        var result = installmentGroupService.getAllInstallmentGroups(accountId);
+
+        assertThat(result).isEmpty();
     }
 }

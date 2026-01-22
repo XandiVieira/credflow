@@ -1,5 +1,7 @@
 package com.relyon.credflow.controller;
 
+import static com.relyon.credflow.constant.BusinessConstants.Pagination.DEFAULT_PAGE_SIZE;
+
 import com.relyon.credflow.model.credit_card.CreditCard;
 import com.relyon.credflow.model.credit_card.CreditCardRequestDTO;
 import com.relyon.credflow.model.credit_card.CreditCardResponseDTO;
@@ -11,13 +13,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/v1/credit-cards")
@@ -33,7 +34,7 @@ public class CreditCardController {
     public ResponseEntity<org.springframework.data.domain.Page<CreditCardResponseDTO>> getAllByAccountId(
             @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size) {
 
         log.info("GET all credit cards for account {} (page={}, size={})", user.getAccountId(), page, size);
         var creditCards = creditCardService.findAll(user.getAccountId(), page, size);

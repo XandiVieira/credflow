@@ -12,12 +12,6 @@ import com.relyon.credflow.model.report.UserReportDTO.UserExpenseDTO;
 import com.relyon.credflow.model.transaction.TransactionFilter;
 import com.relyon.credflow.repository.TransactionRepository;
 import com.relyon.credflow.specification.TransactionSpecFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
@@ -27,6 +21,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,12 +43,12 @@ public class ReportService {
         var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .filter(t -> t.getCategory() != null)
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .filter(transaction -> transaction.getCategory() != null)
                 .toList();
 
         var total = expenseTransactions.stream()
-                .map(t -> t.getValue().abs())
+                .map(transaction -> transaction.getValue().abs())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var categoryGroups = expenseTransactions.stream()
@@ -99,7 +98,7 @@ public class ReportService {
 
     private List<CategoryExpenseDTO> rollupToParentCategories(List<CategoryExpenseDTO> categories, BigDecimal total) {
         var withParents = categories.stream()
-                .filter(c -> c.getParentCategoryId() != null)
+                .filter(category -> category.getParentCategoryId() != null)
                 .collect(Collectors.groupingBy(CategoryExpenseDTO::getParentCategoryId));
 
         var parentTotals = withParents.entrySet().stream()
@@ -225,12 +224,12 @@ public class ReportService {
         var transactions = transactionRepository.findAll(spec, Sort.unsorted());
 
         var expenseTransactions = transactions.stream()
-                .filter(t -> t.getValue().compareTo(BigDecimal.ZERO) < 0)
-                .filter(t -> t.getCreditCard() != null)
+                .filter(transaction -> transaction.getValue().compareTo(BigDecimal.ZERO) < 0)
+                .filter(transaction -> transaction.getCreditCard() != null)
                 .toList();
 
         var total = expenseTransactions.stream()
-                .map(t -> t.getValue().abs())
+                .map(transaction -> transaction.getValue().abs())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var cardGroups = expenseTransactions.stream()

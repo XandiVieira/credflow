@@ -1,5 +1,7 @@
 package com.relyon.credflow.controller;
 
+import static com.relyon.credflow.constant.BusinessConstants.Pagination.DEFAULT_PAGE_SIZE;
+
 import com.relyon.credflow.model.descriptionmapping.DescriptionMapping;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMappingRequestDTO;
 import com.relyon.credflow.model.descriptionmapping.DescriptionMappingResponseDTO;
@@ -7,13 +9,12 @@ import com.relyon.credflow.model.mapper.DescriptionMappingMapper;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.service.DescriptionMappingService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/v1/description-mappings")
@@ -49,7 +50,7 @@ public class DescriptionMappingController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam(required = false) Boolean onlyIncomplete,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size
     ) {
         log.info("GET all description mappings for account {} (onlyIncomplete={}, page={}, size={})",
                 user.getAccountId(), onlyIncomplete, page, size);

@@ -1,8 +1,11 @@
 package com.relyon.credflow.exception;
 
+import static org.springframework.http.HttpStatus.*;
+
 import com.relyon.credflow.service.LocalizedMessageTranslationService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSourceResolvable;
@@ -10,6 +13,7 @@ import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindException;
@@ -20,13 +24,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
-import java.util.Objects;
-
-import static org.springframework.http.HttpStatus.*;
-
-/**
- * Global exception handler that uses i18n message translation for consistent, localized error responses.
- */
 @Slf4j
 @RequiredArgsConstructor
 @RestControllerAdvice
@@ -58,6 +55,14 @@ public class GlobalExceptionHandler {
         return ErrorBody.from(translated, BAD_REQUEST.value());
     }
 
+    @ExceptionHandler(PdfProcessingException.class)
+    @ResponseStatus(BAD_REQUEST)
+    public ErrorBody handlePdfProcessing(DomainException cause) {
+        log.error("BAD_REQUEST - PDF Processing", cause);
+        var translated = translationService.translateMessage(cause);
+        return ErrorBody.from(translated, BAD_REQUEST.value());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(BAD_REQUEST)
     public ErrorBody handleIllegalArgument(IllegalArgumentException cause) {
@@ -83,6 +88,22 @@ public class GlobalExceptionHandler {
         log.error("UNAUTHORIZED - Authentication Failed", cause);
         var message = translationService.translateMessage("auth.invalidCredentials");
         return ErrorBody.from(message, UNAUTHORIZED.value());
+    }
+
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    @ResponseStatus(FORBIDDEN)
+    public ErrorBody handleUnauthorizedAccess(DomainException cause) {
+        log.warn("FORBIDDEN - Unauthorized Access", cause);
+        var translated = translationService.translateMessage(cause);
+        return ErrorBody.from(translated, FORBIDDEN.value());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(FORBIDDEN)
+    public ErrorBody handleAccessDenied(AccessDeniedException cause) {
+        log.warn("FORBIDDEN - Access Denied", cause);
+        var message = translationService.translateMessage("auth.accessDenied");
+        return ErrorBody.from(message, FORBIDDEN.value());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

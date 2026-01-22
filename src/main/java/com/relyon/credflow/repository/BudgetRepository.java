@@ -2,12 +2,11 @@ package com.relyon.credflow.repository;
 
 import com.relyon.credflow.model.budget.Budget;
 import com.relyon.credflow.model.budget.BudgetType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface BudgetRepository extends JpaRepository<Budget, Long> {
 

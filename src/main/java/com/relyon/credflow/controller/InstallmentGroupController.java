@@ -2,6 +2,7 @@ package com.relyon.credflow.controller;
 
 import com.relyon.credflow.model.transaction.InstallmentGroupRequestDTO;
 import com.relyon.credflow.model.transaction.InstallmentGroupResponseDTO;
+import com.relyon.credflow.model.transaction.InstallmentGroupSummaryDTO;
 import com.relyon.credflow.model.user.AuthenticatedUser;
 import com.relyon.credflow.service.InstallmentGroupService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,20 @@ public class InstallmentGroupController {
         log.info("POST /installment-groups for account {}", user.getAccountId());
         var result = installmentGroupService.createInstallmentGroup(request, user.getAccountId());
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    @GetMapping
+    @Operation(
+            summary = "List all installment groups",
+            description = "Retrieves a summary of all installment groups for the authenticated account"
+    )
+    @ApiResponse(responseCode = "200", description = "Installment groups retrieved successfully")
+    public ResponseEntity<List<InstallmentGroupSummaryDTO>> getAllInstallmentGroups(
+            @AuthenticationPrincipal AuthenticatedUser user) {
+
+        log.info("GET /installment-groups for account {}", user.getAccountId());
+        var result = installmentGroupService.getAllInstallmentGroups(user.getAccountId());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{installmentGroupId}")
@@ -113,3 +129,4 @@ public class InstallmentGroupController {
         return ResponseEntity.noContent().build();
     }
 }
+

@@ -13,14 +13,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/v1/accounts")
@@ -45,12 +45,15 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountResponseDTO> findById(@PathVariable Long id) {
+    @PreAuthorize("@securityService.canAccessAccount(principal, #id)")
+    public ResponseEntity<AccountResponseDTO> findById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthenticatedUser user) {
         log.info("GET to fetch account by ID {}", id);
         return accountService.findByIdOptional(id)
-                .map(a -> {
+                .map(account -> {
                     log.info("Account with ID {} found", id);
-                    return ResponseEntity.ok(accountMapper.toDto(a));
+                    return ResponseEntity.ok(accountMapper.toDto(account));
                 })
                 .orElseGet(() -> {
                     log.warn("Account with ID {} not found", id);
@@ -59,10 +62,11 @@ public class AccountController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@securityService.canModifyAccount(principal, #id)")
     public ResponseEntity<AccountResponseDTO> update(
             @PathVariable Long id,
-            @Valid @RequestBody AccountRequestDTO requestDTO) {
-
+            @Valid @RequestBody AccountRequestDTO requestDTO,
+            @AuthenticationPrincipal AuthenticatedUser user) {
         log.info("PUT to update account with ID {}", id);
         Account patch = accountMapper.toEntity(requestDTO);
         var updated = accountService.update(id, patch);
@@ -71,7 +75,10 @@ public class AccountController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    @PreAuthorize("@securityService.isOwnerOfAccount(principal, #id)")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthenticatedUser user) {
         log.info("DELETE account with ID {}", id);
         accountService.delete(id);
         log.info("Account with ID {} successfully deleted", id);
@@ -79,9 +86,11 @@ public class AccountController {
     }
 
     @GetMapping("/{id}/invite-code")
+    @PreAuthorize("@securityService.canAccessAccount(principal, #id)")
     @Operation(summary = "Get account invite code", description = "Returns the invite code for the account")
     @ApiResponse(responseCode = "200", description = "Invite code retrieved successfully")
     @ApiResponse(responseCode = "404", description = "Account not found")
+    @ApiResponse(responseCode = "403", description = "Access denied")
     public ResponseEntity<Map<String, String>> getInviteCode(
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser user) {
@@ -91,9 +100,11 @@ public class AccountController {
     }
 
     @PostMapping("/{id}/regenerate-invite-code")
+    @PreAuthorize("@securityService.isOwnerOfAccount(principal, #id)")
     @Operation(summary = "Regenerate account invite code", description = "Generates a new invite code for the account, invalidating the old one")
     @ApiResponse(responseCode = "200", description = "Invite code regenerated successfully")
     @ApiResponse(responseCode = "404", description = "Account not found")
+    @ApiResponse(responseCode = "403", description = "Access denied - owner only")
     public ResponseEntity<Map<String, String>> regenerateInviteCode(
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser user) {
@@ -116,9 +127,11 @@ public class AccountController {
     }
 
     @PostMapping("/{id}/send-invitation")
+    @PreAuthorize("@securityService.canModifyAccount(principal, #id)")
     @Operation(summary = "Send invitation email", description = "Sends an invitation email to a user to join the account")
     @ApiResponse(responseCode = "200", description = "Invitation email sent successfully")
     @ApiResponse(responseCode = "404", description = "Account not found")
+    @ApiResponse(responseCode = "403", description = "Access denied")
     public ResponseEntity<Map<String, String>> sendInvitation(
             @PathVariable Long id,
             @Valid @RequestBody SendInvitationRequest request,
