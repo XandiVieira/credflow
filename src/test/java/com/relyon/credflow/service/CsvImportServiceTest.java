@@ -2,6 +2,8 @@ package com.relyon.credflow.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -9,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.relyon.credflow.exception.ResourceNotFoundException;
 import com.relyon.credflow.model.account.Account;
+import com.relyon.credflow.model.csv.CsvImportFormat;
 import com.relyon.credflow.model.csv.CsvImportHistory;
 import com.relyon.credflow.model.csv.CsvImportStatus;
 import com.relyon.credflow.model.transaction.Transaction;
@@ -17,6 +20,7 @@ import com.relyon.credflow.repository.CsvImportHistoryRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.web.multipart.MultipartFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,10 +43,32 @@ class CsvImportServiceTest {
     private TransactionService transactionService;
 
     @Mock
+    private BanrisulPdfParserService banrisulPdfParserService;
+
+    @Mock
     private LocalizedMessageTranslationService translationService;
 
     @InjectMocks
     private CsvImportService csvImportService;
+
+    @Test
+    void importCsv_withBanrisulCreditCardCsvFormat_shouldRouteToCorrectMethod() {
+        var accountId = 10L;
+        var account = Account.builder().id(accountId).build();
+        var file = org.mockito.Mockito.mock(MultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("extrato_cartao.csv");
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(transactionService.importFromBanrisulCreditCardCSV(file, accountId))
+                .thenReturn(List.of());
+        when(csvImportHistoryRepository.save(any(CsvImportHistory.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        var result = csvImportService.importCsv(file, accountId, CsvImportFormat.BANRISUL_CREDIT_CARD_CSV);
+
+        verify(transactionService).importFromBanrisulCreditCardCSV(file, accountId);
+        assertThat(result.getFormat()).isEqualTo(CsvImportFormat.BANRISUL_CREDIT_CARD_CSV);
+    }
 
     @Test
     void rollbackImport_whenImportExists_shouldDeleteTransactionsAndUpdateStatus() {

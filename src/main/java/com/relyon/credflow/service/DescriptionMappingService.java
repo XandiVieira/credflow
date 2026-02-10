@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -23,6 +24,7 @@ public class DescriptionMappingService {
     private final CategoryService categoryService;
     private final LocalizedMessageTranslationService translationService;
 
+    @Transactional
     public List<DescriptionMapping> createAll(List<DescriptionMapping> mappings, Long accountId) {
         log.info("Creating {} description mappings for account {}", mappings.size(), accountId);
 
@@ -41,6 +43,7 @@ public class DescriptionMappingService {
         return savedMappings;
     }
 
+    @Transactional
     public DescriptionMapping update(Long id, DescriptionMapping updated, Long accountId) {
         log.info("Updating description mapping ID {} for account {}", id, accountId);
 
@@ -51,6 +54,7 @@ public class DescriptionMappingService {
                 .orElseThrow(() -> notFound(id));
     }
 
+    @Transactional(readOnly = true)
     public Page<DescriptionMapping> findAll(Long accountId, Boolean onlyIncomplete, int page, int size) {
         log.info("Fetching {} description mappings for account {} (page={}, size={})",
                 Boolean.TRUE.equals(onlyIncomplete) ? "incomplete" : "all",
@@ -66,11 +70,13 @@ public class DescriptionMappingService {
     }
 
 
+    @Transactional(readOnly = true)
     public Optional<DescriptionMapping> findById(Long id, Long accountId) {
         log.info("Fetching description mapping ID {} for account {}", id, accountId);
         return repository.findByIdAndAccountId(id, accountId);
     }
 
+    @Transactional(readOnly = true)
     public Optional<DescriptionMapping> findByNormalizedDescription(String description, Long accountId) {
         var normalized = NormalizationUtils.normalizeDescription(description);
         log.info("Searching for mapping by description '{}' (normalized '{}') for account {}",
@@ -78,6 +84,7 @@ public class DescriptionMappingService {
         return repository.findByNormalizedDescriptionAndAccountId(normalized, accountId);
     }
 
+    @Transactional
     public void delete(Long id, Long accountId) {
         log.info("Deleting description mapping ID {} for account {}", id, accountId);
 

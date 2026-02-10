@@ -49,6 +49,8 @@ public class CsvImportService {
             List<Transaction> imported;
             if (format == CsvImportFormat.BANRISUL) {
                 imported = transactionService.importFromBanrisulCSV(file, accountId);
+            } else if (format == CsvImportFormat.BANRISUL_CREDIT_CARD_CSV) {
+                imported = transactionService.importFromBanrisulCreditCardCSV(file, accountId);
             } else if (format == CsvImportFormat.BANRISUL_CREDIT_CARD_PDF) {
                 imported = banrisulPdfParserService.importFromPdf(file, accountId);
             } else {

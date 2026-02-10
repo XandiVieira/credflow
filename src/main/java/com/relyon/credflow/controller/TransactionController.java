@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -257,6 +258,25 @@ public class TransactionController {
         var updated = transactionService.bulkUpdateResponsibleUsers(ids, responsibleUserIds, user.getAccountId());
         var response = updated.stream().map(transactionMapper::toDto).toList();
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Corrigir sinais de transações CSV de cartão de crédito",
+            description = "Nega o valor de transações importadas via CSV que estão armazenadas como positivas (deviam ser negativas). " +
+                    "Exclui linhas que contêm 'PGTO' (pagamentos já são negativos). " +
+                    "Operação idempotente: re-executar encontra 0 transações."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Correção executada com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado", content = @Content)
+    })
+    @PostMapping("/fix-csv-signs")
+    public ResponseEntity<Map<String, Object>> fixCsvSigns(
+            @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        log.info("POST /v1/transactions/fix-csv-signs for account {}", user.getAccountId());
+        var count = transactionService.negatePositiveCsvImportedTransactions(user.getAccountId());
+        return ResponseEntity.ok(Map.of("correctedTransactions", count));
     }
 
     @Operation(

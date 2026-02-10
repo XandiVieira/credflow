@@ -51,8 +51,16 @@ public class TransactionService {
     private final DateTimeFormatter banrisulCsvDate = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public List<Transaction> importFromBanrisulCSV(MultipartFile file, Long accountId) {
+        return importFromCsv(file, accountId, false);
+    }
+
+    public List<Transaction> importFromBanrisulCreditCardCSV(MultipartFile file, Long accountId) {
+        return importFromCsv(file, accountId, true);
+    }
+
+    private List<Transaction> importFromCsv(MultipartFile file, Long accountId, boolean negatePositiveValues) {
         var account = accountService.findById(accountId);
-        log.info("Starting CSV import: {}", file.getOriginalFilename());
+        log.info("Starting CSV import: {} (negatePositiveValues={})", file.getOriginalFilename(), negatePositiveValues);
 
         try (var reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             var existing = preloadMappings(accountId);
@@ -60,7 +68,7 @@ public class TransactionService {
 
             var saved = reader.lines()
                     .dropWhile(line -> !line.matches("^\\d{2}/\\d{2}/\\d{4}.*"))
-                    .map(line -> parseLine(line, account, existing, pending))
+                    .map(line -> parseLine(line, account, existing, pending, negatePositiveValues))
                     .flatMap(Optional::stream)
                     .filter(this::isNotDuplicateByChecksum)
                     .map(repository::save)
@@ -99,13 +107,18 @@ public class TransactionService {
             String line,
             Account account,
             Map<String, DescriptionMapping> existing,
-            Map<String, DescriptionMapping> pending
+            Map<String, DescriptionMapping> pending,
+            boolean negatePositiveValues
     ) {
         try {
             var parts = line.split(";", 4);
             var date = LocalDate.parse(parts[0].trim(), banrisulCsvDate);
             var description = parts[1].replace("\"", "").trim();
             var value = new BigDecimal(parts[2].replace("R$", "").replace(".", "").replace(",", ".").trim());
+
+            if (negatePositiveValues && value.compareTo(BigDecimal.ZERO) > 0) {
+                value = value.negate();
+            }
 
             var normalized = NormalizationUtils.normalizeDescription(description);
             var mapping = Optional.ofNullable(existing.get(normalized)).orElse(pending.get(normalized));
@@ -394,6 +407,21 @@ public class TransactionService {
         }
 
         log.debug("Initialized source tracking: source={}, batchId={}", source, importBatchId);
+    }
+
+    @Transactional
+    public int negatePositiveCsvImportedTransactions(Long accountId) {
+        var transactions = repository.findPositiveCsvImportedNonPaymentTransactions(accountId);
+        log.info("Found {} positive CSV-imported transactions to negate for account {}", transactions.size(), accountId);
+
+        transactions.forEach(transaction -> {
+            transaction.setValue(transaction.getValue().negate());
+            transaction.setWasEditedAfterImport(true);
+        });
+
+        repository.saveAll(transactions);
+        log.info("Negated {} transactions for account {}", transactions.size(), accountId);
+        return transactions.size();
     }
 
     private void markAsEditedIfImported(Transaction transaction) {

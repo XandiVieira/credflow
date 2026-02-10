@@ -54,7 +54,7 @@ class AdvancedExcelExportServiceTest {
 
         try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(result))) {
             assertNotNull(workbook);
-            assertTrue(workbook.getNumberOfSheets() >= 7);
+            assertTrue(workbook.getNumberOfSheets() >= 8);
         }
     }
 
@@ -76,6 +76,7 @@ class AdvancedExcelExportServiceTest {
             assertNotNull(workbook.getSheet("Por Cartão"));
             assertNotNull(workbook.getSheet("Por Responsável"));
             assertNotNull(workbook.getSheet("Tendência Diária"));
+            assertNotNull(workbook.getSheet("Análise Dinâmica"));
         }
     }
 
@@ -96,6 +97,7 @@ class AdvancedExcelExportServiceTest {
             var headerRow = sheet.getRow(0);
             assertEquals("Data", headerRow.getCell(0).getStringCellValue());
             assertEquals("Descrição", headerRow.getCell(1).getStringCellValue());
+            assertEquals("Mês", headerRow.getCell(10).getStringCellValue());
 
             assertTrue(sheet.getLastRowNum() >= transactions.size());
         }

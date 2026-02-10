@@ -14,6 +14,7 @@ import com.relyon.credflow.model.transaction.Transaction;
 import com.relyon.credflow.model.transaction.TransactionSource;
 import com.relyon.credflow.model.transaction.TransactionType;
 import com.relyon.credflow.model.user.User;
+import com.relyon.credflow.repository.CreditCardRepository;
 import com.relyon.credflow.repository.DescriptionMappingRepository;
 import com.relyon.credflow.repository.TransactionRepository;
 import java.math.BigDecimal;
@@ -47,7 +48,13 @@ class TransactionServiceTest {
     private CategoryService categoryService;
 
     @Mock
+    private CreditCardRepository creditCardRepository;
+
+    @Mock
     private RefundDetectionService refundDetectionService;
+
+    @Mock
+    private LocalizedMessageTranslationService translationService;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -347,6 +354,48 @@ class TransactionServiceTest {
                 () -> transactionService.delete(transactionId, accountId));
 
         verify(transactionRepository, never()).delete(any(Transaction.class));
+    }
+
+    @Test
+    void negatePositiveCsvImportedTransactions_negatesPositiveValues() {
+        var accountId = 1L;
+        var t1 = createBasicTransaction();
+        t1.setId(1L);
+        t1.setSource(TransactionSource.CSV_IMPORT);
+        t1.setValue(BigDecimal.valueOf(150.50));
+        t1.setWasEditedAfterImport(false);
+
+        var t2 = createBasicTransaction();
+        t2.setId(2L);
+        t2.setSource(TransactionSource.CSV_IMPORT);
+        t2.setValue(BigDecimal.valueOf(35.00));
+        t2.setWasEditedAfterImport(false);
+
+        when(transactionRepository.findPositiveCsvImportedNonPaymentTransactions(accountId))
+                .thenReturn(List.of(t1, t2));
+        when(transactionRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var count = transactionService.negatePositiveCsvImportedTransactions(accountId);
+
+        assertEquals(2, count);
+        assertEquals(BigDecimal.valueOf(-150.50), t1.getValue());
+        assertEquals(BigDecimal.valueOf(-35.00), t2.getValue());
+        assertTrue(t1.getWasEditedAfterImport());
+        assertTrue(t2.getWasEditedAfterImport());
+        verify(transactionRepository).saveAll(any());
+    }
+
+    @Test
+    void negatePositiveCsvImportedTransactions_idempotent_whenNoPositiveTransactions() {
+        var accountId = 1L;
+
+        when(transactionRepository.findPositiveCsvImportedNonPaymentTransactions(accountId))
+                .thenReturn(List.of());
+
+        var count = transactionService.negatePositiveCsvImportedTransactions(accountId);
+
+        assertEquals(0, count);
+        verify(transactionRepository).saveAll(List.of());
     }
 
     private Transaction createBasicTransaction() {

@@ -29,14 +29,14 @@ public class CsvImportController {
     @PostMapping
     @Operation(
             summary = "Import files",
-            description = "Imports transactions from one or more files. Supported formats: BANRISUL (CSV), BANRISUL_CREDIT_CARD_PDF (PDF)"
+            description = "Imports transactions from one or more files. Supported formats: BANRISUL (CSV conta corrente), BANRISUL_CREDIT_CARD_CSV (CSV cartão de crédito - valores positivos são negados), BANRISUL_CREDIT_CARD_PDF (PDF)"
     )
     @ApiResponse(responseCode = "200", description = "Import completed successfully")
     @ApiResponse(responseCode = "400", description = "Invalid file or format")
     public ResponseEntity<List<CsvImportHistory>> importFiles(
             @Parameter(description = "Files to import (CSV or PDF)", required = true)
             @RequestParam("file") List<MultipartFile> files,
-            @Parameter(description = "Import format: BANRISUL, BANRISUL_CREDIT_CARD_PDF, GENERIC", required = true)
+            @Parameter(description = "Import format: BANRISUL, BANRISUL_CREDIT_CARD_CSV, BANRISUL_CREDIT_CARD_PDF, GENERIC", required = true)
             @RequestParam("format") CsvImportFormat format,
             @AuthenticationPrincipal AuthenticatedUser user) {
 

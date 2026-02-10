@@ -6,7 +6,7 @@ spring:
     password: admin
     driver-class-name: org.postgresql.Driver
   jpa:
-    hibernate.ddl-auto: create
+    hibernate.ddl-auto: update
     show-sql: false
 
 server:

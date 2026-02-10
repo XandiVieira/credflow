@@ -90,6 +90,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     @EntityGraph(attributePaths = {"category", "creditCard"})
     List<Transaction> findAllByAccountId(Long accountId);
 
+    @Query("""
+            select t from Transaction t
+             where t.account.id = :accountId
+               and t.source = 'CSV_IMPORT'
+               and t.value > 0
+               and upper(t.description) not like '%PGTO%'
+            """)
+    List<Transaction> findPositiveCsvImportedNonPaymentTransactions(Long accountId);
+
     @EntityGraph(attributePaths = {"category", "creditCard"})
     @Query("""
             select t from Transaction t

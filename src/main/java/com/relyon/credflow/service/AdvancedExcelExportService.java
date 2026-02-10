@@ -22,6 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xddf.usermodel.chart.*;
+import org.apache.poi.ss.util.AreaReference;
+import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Sort;
@@ -56,6 +58,7 @@ public class AdvancedExcelExportService {
             createCreditCardSummarySheet(workbook, transactions, styles);
             createUserSummarySheet(workbook, transactions, styles);
             createDailyTrendSheet(workbook, transactions, styles);
+            createDynamicAnalysisSheet(workbook, transactions);
 
             workbook.setActiveSheet(0);
 
@@ -170,6 +173,30 @@ public class AdvancedExcelExportService {
         kpiValueStyle.setDataFormat(currencyFormat.getFormat("R$ #,##0.00"));
         styles.put("kpiValue", kpiValueStyle);
 
+        var categoryTitleFont = workbook.createFont();
+        categoryTitleFont.setBold(true);
+        categoryTitleFont.setFontHeightInPoints((short) 22);
+        categoryTitleFont.setColor(IndexedColors.DARK_BLUE.getIndex());
+        var categoryTitleStyle = workbook.createCellStyle();
+        categoryTitleStyle.setFont(categoryTitleFont);
+        styles.put("categoryTitle", categoryTitleStyle);
+
+        var categoryHeaderFont = workbook.createFont();
+        categoryHeaderFont.setBold(true);
+        categoryHeaderFont.setFontHeightInPoints((short) 13);
+        categoryHeaderFont.setColor(IndexedColors.WHITE.getIndex());
+        var categoryHeaderStyle = workbook.createCellStyle();
+        categoryHeaderStyle.setFont(categoryHeaderFont);
+        categoryHeaderStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        categoryHeaderStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        categoryHeaderStyle.setAlignment(HorizontalAlignment.CENTER);
+        categoryHeaderStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        categoryHeaderStyle.setBorderBottom(BorderStyle.THIN);
+        categoryHeaderStyle.setBorderTop(BorderStyle.THIN);
+        categoryHeaderStyle.setBorderLeft(BorderStyle.THIN);
+        categoryHeaderStyle.setBorderRight(BorderStyle.THIN);
+        styles.put("categoryHeader", categoryHeaderStyle);
+
         return styles;
     }
 
@@ -267,7 +294,7 @@ public class AdvancedExcelExportService {
         var sheet = workbook.createSheet("Transações");
 
         var headers = new String[]{"Data", "Descrição", "Descrição Simplificada", "Categoria",
-                "Responsáveis", "Cartão de Crédito", "Valor", "Tipo", "Origem", "Parcela"};
+                "Responsáveis", "Cartão de Crédito", "Valor", "Tipo", "Origem", "Parcela", "Mês"};
 
         var headerRow = sheet.createRow(0);
         for (var i = 0; i < headers.length; i++) {
@@ -301,6 +328,9 @@ public class AdvancedExcelExportService {
                 installment = transaction.getCurrentInstallment() + "/" + transaction.getTotalInstallments();
             }
             createCell(row, 9, installment, styles.get("normal"));
+
+            var yearMonth = YearMonth.from(transaction.getDate()).format(MONTH_FORMATTER);
+            createCell(row, 10, yearMonth, styles.get("normal"));
         }
 
         for (var i = 0; i < headers.length; i++) {
@@ -320,12 +350,12 @@ public class AdvancedExcelExportService {
 
         var titleRow = sheet.createRow(0);
         titleRow.createCell(0).setCellValue("Resumo por Categoria");
-        titleRow.getCell(0).setCellStyle(styles.get("title"));
+        titleRow.getCell(0).setCellStyle(styles.get("categoryTitle"));
 
         var headers = new String[]{"Categoria", "Receitas", "Despesas", "Saldo", "Qtd", "% Despesas"};
         var headerRow = sheet.createRow(2);
         for (var i = 0; i < headers.length; i++) {
-            createCell(headerRow, i, headers[i], styles.get("header"));
+            createCell(headerRow, i, headers[i], styles.get("categoryHeader"));
         }
 
         var categoryData = calculateCategoryDetails(transactions);
@@ -373,6 +403,7 @@ public class AdvancedExcelExportService {
         if (!categoryData.isEmpty()) {
             sheet.setAutoFilter(new CellRangeAddress(2, rowNum - 1, 0, headers.length - 1));
             createBarChart(sheet, dataStartRow, rowNum - 1, 7, 25, "Despesas por Categoria", 0, 2);
+            createPieChart(sheet, dataStartRow, rowNum - 1, 7, 45, "Distribuição de Despesas", 2);
         }
     }
 
@@ -609,6 +640,56 @@ public class AdvancedExcelExportService {
         if (dailyData.size() > 1) {
             createLineChart(sheet, dataStartRow, rowNum - 1, 6, 25, "Evolução do Saldo Acumulado", 0, 4, -1);
         }
+    }
+
+    private void createDynamicAnalysisSheet(XSSFWorkbook workbook, List<Transaction> transactions) {
+        if (transactions.isEmpty()) {
+            return;
+        }
+
+        var transactionsSheet = workbook.getSheet("Transações");
+        var lastRow = transactionsSheet.getLastRowNum();
+        var lastCol = 10;
+
+        var source = new AreaReference(
+                new CellReference(0, 0),
+                new CellReference(lastRow, lastCol),
+                workbook.getSpreadsheetVersion()
+        );
+
+        var pivotSheet = workbook.createSheet("Análise Dinâmica");
+        var pivotTable = pivotSheet.createPivotTable(source, new CellReference(0, 0), transactionsSheet);
+
+        pivotTable.addRowLabel(3);
+        pivotTable.addColLabel(10);
+        pivotTable.addReportFilter(4);
+        pivotTable.addReportFilter(5);
+        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, 6, "Valor Total");
+    }
+
+    private void createPieChart(XSSFSheet sheet, int dataStartRow, int dataEndRow,
+                                int chartCol, int chartEndRow, String title, int valueCol) {
+        var drawing = sheet.createDrawingPatriarch();
+        var anchor = drawing.createAnchor(0, 0, 0, 0, chartCol, chartEndRow - 19, chartCol + 6, chartEndRow);
+
+        var chart = drawing.createChart(anchor);
+        chart.setTitleText(title);
+        chart.setTitleOverlay(false);
+
+        var legend = chart.getOrAddLegend();
+        legend.setPosition(LegendPosition.RIGHT);
+
+        var data = chart.createData(ChartTypes.PIE, null, null);
+
+        var categories = XDDFDataSourcesFactory.fromStringCellRange(sheet,
+                new CellRangeAddress(dataStartRow, dataEndRow, 0, 0));
+        var values = XDDFDataSourcesFactory.fromNumericCellRange(sheet,
+                new CellRangeAddress(dataStartRow, dataEndRow, valueCol, valueCol));
+
+        var series = data.addSeries(categories, values);
+        series.setTitle(title, null);
+
+        chart.plot(data);
     }
 
     private void createPieChart(XSSFSheet sheet, int dataStartRow, int dataEndRow,
